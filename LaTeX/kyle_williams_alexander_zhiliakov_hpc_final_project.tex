@@ -1,0 +1,1175 @@
+\documentclass[12pt]{article}
+
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{amsthm}
+
+\usepackage[dvipsnames, table]{xcolor}
+\colorlet{DarkRed}{Red!90!black}
+\colorlet{LightRed}{Red!10!white}
+\colorlet{DarkGreen}{Green!50!black}
+\colorlet{LightGreen}{Green!10!white}
+\usepackage{colortbl} % https://texblog.org/2011/04/19/highlight-table-rowscolumns-with-color/
+
+% sections
+\usepackage{titlesec} % https://latex.org/forum/viewtopic.php?t=10456
+\titleformat*{\section}{\large\bfseries}
+\titlespacing*{\section}{0pt}{2mm}{2mm}
+\titleformat{\subsection}[runin]% runin puts it in the same paragraph
+{\normalfont\bfseries}% formatting commands to apply to the whole heading
+{\thesubsection}% the label and number
+{0.5em}% space between label/number and subsection title
+{}% formatting commands applied just to subsection title
+[.]% punctuation or other commands following subsection title
+%\titleformat{\section}[runin]{\normalfont\bfseries}{\thesection}{0.5em}{}[.]
+\titleformat{\subsubsection}[runin]{\normalfont\bfseries}{\thesubsubsection}{0.5em}{}[.]
+
+% links
+\usepackage{hyperref}
+\hypersetup{
+	colorlinks,
+	linkcolor={DarkRed},
+	citecolor={DarkRed},
+	urlcolor={blue}
+}
+
+\usepackage{geometry}
+\newgeometry{
+	left=2cm, right=1.5cm, top=1.5cm, bottom=1.5cm,
+	includefoot, heightrounded
+}
+
+\usepackage[parfill]{parskip} % https://tex.stackexchange.com/a/16703/135296
+
+% sub figures / grids of pictures
+\usepackage{pdfpages}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\graphicspath{{img/}} % includegraphics path
+% \usepackage[export]{adjustbox} % https://tex.stackexchange.com/questions/20640/how-to-add-border-for-an-image
+\newcommand{\includegraphicsw}[2][1.]{\includegraphics[width=#1\linewidth]{#2}}
+\newcommand{\svginput}[1]{\input{img/#1}} % pdf_tex path
+\newcommand{\svginputw}[2][\linewidth]{\def\svgwidth{#1}\input{img/#2}} % pdf_tex path
+
+% tables
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{hhline}
+\usepackage{float} % for H
+
+% bold for everything
+\usepackage{bm}
+\newcommand{\vect}[1]{\boldsymbol{\mathbf{#1}}}
+
+% differentials
+\newcommand*\diff{\mathop{}\!\mathrm{d}}
+\newcommand*\Diff[1]{\mathop{}\!\mathrm{d^#1}}
+
+\DeclareMathOperator{\Div}{div}
+\DeclareMathOperator{\Dist}{dist}
+\newcommand{\sphere}{{\Gamma_{\text{sph}}}}
+\newcommand{\tor}{{\Gamma_{\text{tor}}}}
+
+\newcommand{\HOne}{{\mathbb H^1}}
+\newcommand{\LTwo}{{\mathbb L^2}}
+\newcommand{\LTwoSpace}[1][\Gamma]{{\mathbb L^2\left({#1}\right)}}
+\newcommand{\HOneSpace}[1][\Gamma]{{\mathbb H^1\left({#1}\right)}}
+
+\newcommand{\cl}[1]{\texttt{\$~#1}}
+
+\usepackage{listings}
+%\definecolor{mygreen}{rgb}{0,0.6,0}
+\lstset{
+%	language=C++,
+%	basicstyle=\footnotesize\ttfamily,
+	breaklines=true,
+%	commentstyle=\color{mygreen},
+	frame=l,
+	xleftmargin=5pt,
+	tabsize=2,
+%	belowskip=-1pt
+} 
+
+% https://tex.stackexchange.com/questions/9425/how-to-fix-footnote-position-at-the-bottom-of-the-page
+\usepackage[bottom]{footmisc}
+\newcommand{\AZ}[1]{{\color{red}\textbf{AZ}:~#1}}
+\newcommand{\dimSize}{n}
+
+\title{COSC\,6365 -- Introduction to High Performance Computing, Fall 2019\\Final project: \textbf{Matrix-free finite element method}}
+\author{
+	Kyle Williams\thanks{Department of Mathematics, University of Houston, Houston, Texas 77204 (kylew@math.uh.edu).} \and
+	Alexander Zhiliakov\thanks{Department of Mathematics, University of Houston, Houston, Texas 77204 (alex@math.uh.edu).}
+}
+
+\begin{document}
+	
+\maketitle
+
+\tableofcontents
+\vfill
+\clearpage
+\let\oldtabular\tabular
+\renewcommand{\tabular}[1][1.5]{\def\arraystretch{#1}\oldtabular}
+\renewcommand\arraystretch{1.3}
+
+\section{Theoretical background}
+
+\subsection{Finite element method}
+
+\AZ{Add general description and several refs.}
+
+\begin{equation}\label{basis}
+	\vect\phi \coloneqq \{ \phi_1, \phi_2, \dots, \phi_\dimSize \}
+\end{equation}
+
+\begin{equation}\label{system}
+	\vect A\,\vect x = \vect b
+\end{equation}
+
+\subsection{Sparse matrix-vector multiplication}
+
+\AZ{Talk about sparsity of the system and typical operation required (MV) for iterative solvers, emphasize problems related to memory bandwidth}
+
+One usually builds the basis~\eqref{basis} using a concept of \textit{finite element}, see~\cite{ciarlet2002finite}. Roughly speaking, the finite element is a collection of 3 entities: cell (typically a convex polygon in 2D or polyhedron 3D), finite dimensional space of shape functions~$S$ defined on this cell (typically polynomials of some degree~$k$), and the set of degrees of freedom for these shape functions (e.g. nodal values, mean values over edges or faces, normal or tangential components etc.) Given finite element, one then constructs a basis in~$S$ via associating a shape function with a degree of freedom: One fixes one degree of freedom to be unity and all the others to be zero for this shape function. 
+
+When the finite element is chosen, one constructs a trace (on a given cell) of the basis function~${\phi \in \vect\phi}$ from cell's shape function. This way it is guaranteed that each basis function has a compact support. See Figure~\AZ{Add.}
+
+In this report we stick to \textit{Lagrange} (this means that degrees of freedom are chosen to be nodal values) finite elements of polynomial degree~$k > 1$ defined on hexahedron elements. \AZ{Add quad elements too?} As we will see below, theoretically the matrix-free approach becomes more and more beneficial as one increases~$k$, i.e. for higher-order elements. 
+
+A matrix $\vect B \in \mathbb R^{\dimSize\times\dimSize}$ is called \textit{sparse} iff $\sum_{i,\,j} \mbox{sign}\,b_{ij} = O(\dimSize)$ as $\dimSize \rightarrow \infty$, i.e. most of the elements are zero and need not to be stored. This way memory requirements are $O(\dimSize)$ vs. $\dimSize^2$ as in dense case. \textbf{Given some requirements on the mesh and the finite element definition, we have that our system matrix~$\vect A$ in~\eqref{system} is sparse.} \AZ{Add an example for P1 elements.}
+
+For big complex problems, especially in 3D, it is typical to use an iterative solver to solve~\eqref{system}. The problem may combine different variables (scalar and vector) and couple different physics (e.g. electromagnetics and fluid flow, fluid-structure interaction and so forth); In this case one would typically equip the iterative solver with an appropriate preconditioner (which may be rather complex) that takes the structure of the underline problem into account. In any case, both the solver and the application of the preconditioner are usually based on one core operation: \textbf{Matrix-vector multiplication}.
+
+One uses special matrix formats to represent sparse matrices in a computer to achieve~$O(\dimSize)$ memory requirements. One popular choice is \textit{compressed sparse row} (CSR) storage format, see~\AZ{Add ref and describe the format.} This format is quite economic in terms of memory requirements and is convenient to perform the matrix-vector multiplication:
+
+\AZ{Insert algorithm. Point out the drawbacks with cache.}
+
+\subsection{Matrix-free approach to matrix-vector multiplication}
+
+The two main reasons that favor matrix-free computations are the following:
+
+\begin{enumerate}
+\item Matrix-free methods skip the storage of big global sparse matrices and compute the underlying weak forms on the fly. Since the memory transfer, i.e., the speed at which the data can be read from RAM memory, is the bottleneck for matrix-based computations rather than the actual arithmetic done using this data, a matrix-free evaluation that reads less data can be advantageous even if it does more computations. This concept is building upon a trend in computer architecture which is best described by the term memory wall, saying that compute performance has increased more rapidly than the memory performance. Thus, a certain degree of arithmetic operations is essentially for free, and this share has become larger during the last twenty years. It has enabled this radical algorithm switch going from a matrix-based to a matrix-free implementation of matrix-vector products for iterative solvers, besides their classical use in explicit time integration. Of course, the implementation must be efficient and there cannot be an excess in computations to make it a win in total. The deal.II library uses SIMD vectorization and highly optimized kernels based on templates of the polynomial degree to achieve this goal. To give a perspective, a sparse matrix-vector product for quadratic elements FE\_Q used to be equally fast as the matrix-free implementation on processors designed around 2005-2007 (e.g. Pentium 4 or AMD Opteron Barcelona with 2-4 cores per chip). By 2018, the matrix-free evaluation is around eight times as fast (measured on Intel Skylake Server, 14 cores).
+\item Matrix-free methods have a better complexity per degree of freedom as the degree is increased, due to sum factorization. The work per degree of freedom increases as (k) in the degree k for matrix-free schemes, whereas it increases as (kd) for matrix-based methods. This gives higher order schemes an edge. A particularly nice feature in matrix-free evaluation is that the (1) terms often dominate, so it appears that higher order methods are as fast in terms of evaluation time as low order ones, when they have the same number of degrees of freedom. For the implementation in deal.II, best throughput is typically achieved for polynomial degrees between three and six.
+\end{enumerate}
+
+\section{Implementation details}
+
+\AZ{Refer to deal.II step; Point out what was changed and why; Explain compilation details}
+
+\section{Computational experiments}
+
+\subsection{Summary}
+
+%\section{Ping-pong}
+%
+%In order to pin processes, we need to set \texttt{I\_MPI\_PIN=yes}, see \href{https://software.intel.com/en-us/mpi-developer-reference-linux-environment-variables-for-process-pinning}{here}. Otherwise flags like \texttt{--bind-to core} cause runtime errors.
+%
+%The output for send-receive message time for different message sizes:
+%\begin{lstlisting}[basicstyle=\footnotesize]
+%Blocking
+%N = 10
+%On process 1, For destination 2, Time = 0.000033 sec
+%On process 1, For destination 4, Time = 0.000037 sec
+%On process 1, For destination 8, Time = 0.000025 sec
+%On process 1, For destination 16, Time = 0.000030 sec
+%On process 1, For destination 32, Time = 0.000037 sec
+%On process 1, For destination 56, Time = 0.000047 sec
+%On process 1, For destination 2, Time = 0.000005 sec
+%On process 1, For destination 4, Time = 0.000003 sec
+%On process 1, For destination 8, Time = 0.000004 sec
+%On process 1, For destination 16, Time = 0.000004 sec
+%On process 1, For destination 32, Time = 0.000004 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%On process 1, For destination 2, Time = 0.000004 sec
+%On process 1, For destination 4, Time = 0.000003 sec
+%On process 1, For destination 8, Time = 0.000003 sec
+%On process 1, For destination 16, Time = 0.000003 sec
+%On process 1, For destination 32, Time = 0.000004 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%On process 1, For destination 2, Time = 0.000003 sec
+%On process 1, For destination 4, Time = 0.000003 sec
+%On process 1, For destination 8, Time = 0.000004 sec
+%On process 1, For destination 16, Time = 0.000005 sec
+%On process 1, For destination 32, Time = 0.000004 sec
+%On process 1, For destination 56, Time = 0.000003 sec
+%On process 1, For destination 2, Time = 0.000004 sec
+%On process 1, For destination 4, Time = 0.000003 sec
+%On process 1, For destination 8, Time = 0.000003 sec
+%On process 1, For destination 16, Time = 0.000003 sec
+%On process 1, For destination 32, Time = 0.000003 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%Non Blocking
+%N = 10
+%On process 1, For destination 2, Time = 0.000018 sec
+%On process 1, For destination 4, Time = 0.000024 sec
+%On process 1, For destination 8, Time = 0.000040 sec
+%On process 1, For destination 16, Time = 0.000012 sec
+%On process 1, For destination 32, Time = 0.000005 sec
+%On process 1, For destination 56, Time = 0.000014 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000000 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000000 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000000 sec
+%On process 1, For destination 32, Time = 0.000000 sec
+%On process 1, For destination 56, Time = 0.000000 sec
+%On process 1, For destination 2, Time = 0.000000 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000000 sec
+%On process 1, For destination 16, Time = 0.000000 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000000 sec
+%On process 1, For destination 4, Time = 0.000000 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000000 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000000 sec
+%Blocking
+%N = 100
+%On process 1, For destination 2, Time = 0.000051 sec
+%On process 1, For destination 4, Time = 0.000038 sec
+%On process 1, For destination 8, Time = 0.000028 sec
+%On process 1, For destination 16, Time = 0.000049 sec
+%On process 1, For destination 32, Time = 0.000031 sec
+%On process 1, For destination 56, Time = 0.000040 sec
+%On process 1, For destination 2, Time = 0.000004 sec
+%On process 1, For destination 4, Time = 0.000004 sec
+%On process 1, For destination 8, Time = 0.000004 sec
+%On process 1, For destination 16, Time = 0.000004 sec
+%On process 1, For destination 32, Time = 0.000003 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%On process 1, For destination 2, Time = 0.000009 sec
+%On process 1, For destination 4, Time = 0.000015 sec
+%On process 1, For destination 8, Time = 0.000004 sec
+%On process 1, For destination 16, Time = 0.000004 sec
+%On process 1, For destination 32, Time = 0.000004 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%On process 1, For destination 2, Time = 0.000004 sec
+%On process 1, For destination 4, Time = 0.000004 sec
+%On process 1, For destination 8, Time = 0.000003 sec
+%On process 1, For destination 16, Time = 0.000004 sec
+%On process 1, For destination 32, Time = 0.000004 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%On process 1, For destination 2, Time = 0.000003 sec
+%On process 1, For destination 4, Time = 0.000004 sec
+%On process 1, For destination 8, Time = 0.000003 sec
+%On process 1, For destination 16, Time = 0.000004 sec
+%On process 1, For destination 32, Time = 0.000004 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%Non Blocking
+%N = 100
+%On process 1, For destination 2, Time = 0.000021 sec
+%On process 1, For destination 4, Time = 0.000016 sec
+%On process 1, For destination 8, Time = 0.000055 sec
+%On process 1, For destination 16, Time = 0.000011 sec
+%On process 1, For destination 32, Time = 0.000005 sec
+%On process 1, For destination 56, Time = 0.000005 sec
+%On process 1, For destination 2, Time = 0.000000 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000000 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000000 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000000 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000000 sec
+%Blocking
+%N = 1000
+%On process 1, For destination 2, Time = 0.000033 sec
+%On process 1, For destination 4, Time = 0.000032 sec
+%On process 1, For destination 8, Time = 0.000033 sec
+%On process 1, For destination 16, Time = 0.000029 sec
+%On process 1, For destination 32, Time = 0.000030 sec
+%On process 1, For destination 56, Time = 0.000031 sec
+%On process 1, For destination 2, Time = 0.000006 sec
+%On process 1, For destination 4, Time = 0.000008 sec
+%On process 1, For destination 8, Time = 0.000004 sec
+%On process 1, For destination 16, Time = 0.000004 sec
+%On process 1, For destination 32, Time = 0.000004 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%On process 1, For destination 2, Time = 0.000003 sec
+%On process 1, For destination 4, Time = 0.000003 sec
+%On process 1, For destination 8, Time = 0.000004 sec
+%On process 1, For destination 16, Time = 0.000004 sec
+%On process 1, For destination 32, Time = 0.000004 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%On process 1, For destination 2, Time = 0.000004 sec
+%On process 1, For destination 4, Time = 0.000013 sec
+%On process 1, For destination 8, Time = 0.000003 sec
+%On process 1, For destination 16, Time = 0.000012 sec
+%On process 1, For destination 32, Time = 0.000004 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%On process 1, For destination 2, Time = 0.000003 sec
+%On process 1, For destination 4, Time = 0.000004 sec
+%On process 1, For destination 8, Time = 0.000004 sec
+%On process 1, For destination 16, Time = 0.000004 sec
+%On process 1, For destination 32, Time = 0.000003 sec
+%On process 1, For destination 56, Time = 0.000004 sec
+%Non Blocking
+%N = 1000
+%On process 1, For destination 2, Time = 0.000021 sec
+%On process 1, For destination 4, Time = 0.000026 sec
+%On process 1, For destination 8, Time = 0.000047 sec
+%On process 1, For destination 16, Time = 0.000006 sec
+%On process 1, For destination 32, Time = 0.000005 sec
+%On process 1, For destination 56, Time = 0.000015 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000002 sec
+%On process 1, For destination 8, Time = 0.000007 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000002 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000000 sec
+%On process 1, For destination 8, Time = 0.000003 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000000 sec
+%On process 1, For destination 56, Time = 0.000000 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000000 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000000 sec
+%On process 1, For destination 32, Time = 0.000000 sec
+%On process 1, For destination 56, Time = 0.000000 sec
+%Blocking
+%N = 10000
+%On process 1, For destination 2, Time = 0.000050 sec
+%On process 1, For destination 4, Time = 0.000046 sec
+%On process 1, For destination 8, Time = 0.000038 sec
+%On process 1, For destination 16, Time = 0.000036 sec
+%On process 1, For destination 32, Time = 0.000037 sec
+%On process 1, For destination 56, Time = 0.000047 sec
+%On process 1, For destination 2, Time = 0.000007 sec
+%On process 1, For destination 4, Time = 0.000007 sec
+%On process 1, For destination 8, Time = 0.000007 sec
+%On process 1, For destination 16, Time = 0.000007 sec
+%On process 1, For destination 32, Time = 0.000006 sec
+%On process 1, For destination 56, Time = 0.000007 sec
+%On process 1, For destination 2, Time = 0.000006 sec
+%On process 1, For destination 4, Time = 0.000006 sec
+%On process 1, For destination 8, Time = 0.000006 sec
+%On process 1, For destination 16, Time = 0.000006 sec
+%On process 1, For destination 32, Time = 0.000019 sec
+%On process 1, For destination 56, Time = 0.000007 sec
+%On process 1, For destination 2, Time = 0.000007 sec
+%On process 1, For destination 4, Time = 0.000006 sec
+%On process 1, For destination 8, Time = 0.000006 sec
+%On process 1, For destination 16, Time = 0.000006 sec
+%On process 1, For destination 32, Time = 0.000009 sec
+%On process 1, For destination 56, Time = 0.000007 sec
+%On process 1, For destination 2, Time = 0.000007 sec
+%On process 1, For destination 4, Time = 0.000006 sec
+%On process 1, For destination 8, Time = 0.000006 sec
+%On process 1, For destination 16, Time = 0.000006 sec
+%On process 1, For destination 32, Time = 0.000006 sec
+%On process 1, For destination 56, Time = 0.000007 sec
+%Non Blocking
+%N = 10000
+%On process 1, For destination 2, Time = 0.000024 sec
+%On process 1, For destination 4, Time = 0.000039 sec
+%On process 1, For destination 8, Time = 0.000040 sec
+%On process 1, For destination 16, Time = 0.000008 sec
+%On process 1, For destination 32, Time = 0.000007 sec
+%On process 1, For destination 56, Time = 0.000006 sec
+%On process 1, For destination 2, Time = 0.000003 sec
+%On process 1, For destination 4, Time = 0.000002 sec
+%On process 1, For destination 8, Time = 0.000003 sec
+%On process 1, For destination 16, Time = 0.000002 sec
+%On process 1, For destination 32, Time = 0.000002 sec
+%On process 1, For destination 56, Time = 0.000002 sec
+%On process 1, For destination 2, Time = 0.000003 sec
+%On process 1, For destination 4, Time = 0.000003 sec
+%On process 1, For destination 8, Time = 0.000003 sec
+%On process 1, For destination 16, Time = 0.000002 sec
+%On process 1, For destination 32, Time = 0.000002 sec
+%On process 1, For destination 56, Time = 0.000002 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000002 sec
+%On process 1, For destination 8, Time = 0.000002 sec
+%On process 1, For destination 16, Time = 0.000002 sec
+%On process 1, For destination 32, Time = 0.000002 sec
+%On process 1, For destination 56, Time = 0.000002 sec
+%On process 1, For destination 2, Time = 0.000002 sec
+%On process 1, For destination 4, Time = 0.000002 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000002 sec
+%On process 1, For destination 32, Time = 0.000002 sec
+%On process 1, For destination 56, Time = 0.000002 sec
+%Blocking
+%N = 100000
+%On process 1, For destination 2, Time = 0.000196 sec
+%On process 1, For destination 4, Time = 0.000174 sec
+%On process 1, For destination 8, Time = 0.000184 sec
+%On process 1, For destination 16, Time = 0.000166 sec
+%On process 1, For destination 32, Time = 0.000167 sec
+%On process 1, For destination 56, Time = 0.000194 sec
+%On process 1, For destination 2, Time = 0.000065 sec
+%On process 1, For destination 4, Time = 0.000063 sec
+%On process 1, For destination 8, Time = 0.000034 sec
+%On process 1, For destination 16, Time = 0.000035 sec
+%On process 1, For destination 32, Time = 0.000034 sec
+%On process 1, For destination 56, Time = 0.000034 sec
+%On process 1, For destination 2, Time = 0.000049 sec
+%On process 1, For destination 4, Time = 0.000034 sec
+%On process 1, For destination 8, Time = 0.000034 sec
+%On process 1, For destination 16, Time = 0.000032 sec
+%On process 1, For destination 32, Time = 0.000033 sec
+%On process 1, For destination 56, Time = 0.000031 sec
+%On process 1, For destination 2, Time = 0.000032 sec
+%On process 1, For destination 4, Time = 0.000029 sec
+%On process 1, For destination 8, Time = 0.000029 sec
+%On process 1, For destination 16, Time = 0.000030 sec
+%On process 1, For destination 32, Time = 0.000029 sec
+%On process 1, For destination 56, Time = 0.000030 sec
+%On process 1, For destination 2, Time = 0.000029 sec
+%On process 1, For destination 4, Time = 0.000031 sec
+%On process 1, For destination 8, Time = 0.000032 sec
+%On process 1, For destination 16, Time = 0.000030 sec
+%On process 1, For destination 32, Time = 0.000031 sec
+%On process 1, For destination 56, Time = 0.000031 sec
+%Non Blocking
+%N = 100000
+%On process 1, For destination 2, Time = 0.000025 sec
+%On process 1, For destination 4, Time = 0.000021 sec
+%On process 1, For destination 8, Time = 0.000041 sec
+%On process 1, For destination 16, Time = 0.000032 sec
+%On process 1, For destination 32, Time = 0.000013 sec
+%On process 1, For destination 56, Time = 0.000013 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000002 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000140 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000022 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000020 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000023 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000023 sec
+%On process 1, For destination 8, Time = 0.000003 sec
+%On process 1, For destination 16, Time = 0.000014 sec
+%On process 1, For destination 32, Time = 0.000003 sec
+%On process 1, For destination 56, Time = 0.000015 sec
+%Blocking
+%N = 1000000
+%On process 1, For destination 2, Time = 0.000666 sec
+%On process 1, For destination 4, Time = 0.000712 sec
+%On process 1, For destination 8, Time = 0.000765 sec
+%On process 1, For destination 16, Time = 0.000787 sec
+%On process 1, For destination 32, Time = 0.000767 sec
+%On process 1, For destination 56, Time = 0.000784 sec
+%On process 1, For destination 2, Time = 0.000096 sec
+%On process 1, For destination 4, Time = 0.000096 sec
+%On process 1, For destination 8, Time = 0.000101 sec
+%On process 1, For destination 16, Time = 0.000095 sec
+%On process 1, For destination 32, Time = 0.000099 sec
+%On process 1, For destination 56, Time = 0.000095 sec
+%On process 1, For destination 2, Time = 0.000094 sec
+%On process 1, For destination 4, Time = 0.000100 sec
+%On process 1, For destination 8, Time = 0.000095 sec
+%On process 1, For destination 16, Time = 0.000093 sec
+%On process 1, For destination 32, Time = 0.000096 sec
+%On process 1, For destination 56, Time = 0.000097 sec
+%On process 1, For destination 2, Time = 0.000095 sec
+%On process 1, For destination 4, Time = 0.000096 sec
+%On process 1, For destination 8, Time = 0.000099 sec
+%On process 1, For destination 16, Time = 0.000094 sec
+%On process 1, For destination 32, Time = 0.000095 sec
+%On process 1, For destination 56, Time = 0.000093 sec
+%On process 1, For destination 2, Time = 0.000093 sec
+%On process 1, For destination 4, Time = 0.000095 sec
+%On process 1, For destination 8, Time = 0.000094 sec
+%On process 1, For destination 16, Time = 0.000094 sec
+%On process 1, For destination 32, Time = 0.000093 sec
+%On process 1, For destination 56, Time = 0.000094 sec
+%Non Blocking
+%N = 1000000
+%On process 1, For destination 2, Time = 0.000034 sec
+%On process 1, For destination 4, Time = 0.000030 sec
+%On process 1, For destination 8, Time = 0.000058 sec
+%On process 1, For destination 16, Time = 0.000017 sec
+%On process 1, For destination 32, Time = 0.000006 sec
+%On process 1, For destination 56, Time = 0.000013 sec
+%On process 1, For destination 2, Time = 0.000002 sec
+%On process 1, For destination 4, Time = 0.000005 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000002 sec
+%On process 1, For destination 32, Time = 0.000002 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000011 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000032 sec
+%On process 1, For destination 4, Time = 0.000128 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000051 sec
+%Blocking
+%N = 10000000
+%On process 1, For destination 2, Time = 0.003921 sec
+%On process 1, For destination 4, Time = 0.004592 sec
+%On process 1, For destination 8, Time = 0.004635 sec
+%On process 1, For destination 16, Time = 0.003970 sec
+%On process 1, For destination 32, Time = 0.003914 sec
+%On process 1, For destination 56, Time = 0.004505 sec
+%On process 1, For destination 2, Time = 0.000843 sec
+%On process 1, For destination 4, Time = 0.000909 sec
+%On process 1, For destination 8, Time = 0.000852 sec
+%On process 1, For destination 16, Time = 0.000831 sec
+%On process 1, For destination 32, Time = 0.000821 sec
+%On process 1, For destination 56, Time = 0.000838 sec
+%On process 1, For destination 2, Time = 0.000873 sec
+%On process 1, For destination 4, Time = 0.000845 sec
+%On process 1, For destination 8, Time = 0.000845 sec
+%On process 1, For destination 16, Time = 0.000824 sec
+%On process 1, For destination 32, Time = 0.000844 sec
+%On process 1, For destination 56, Time = 0.000822 sec
+%On process 1, For destination 2, Time = 0.000846 sec
+%On process 1, For destination 4, Time = 0.000841 sec
+%On process 1, For destination 8, Time = 0.000829 sec
+%On process 1, For destination 16, Time = 0.000854 sec
+%On process 1, For destination 32, Time = 0.000848 sec
+%On process 1, For destination 56, Time = 0.000820 sec
+%On process 1, For destination 2, Time = 0.000848 sec
+%On process 1, For destination 4, Time = 0.000827 sec
+%On process 1, For destination 8, Time = 0.000837 sec
+%On process 1, For destination 16, Time = 0.000828 sec
+%On process 1, For destination 32, Time = 0.000846 sec
+%On process 1, For destination 56, Time = 0.000825 sec
+%Non Blocking
+%N = 10000000
+%On process 1, For destination 2, Time = 0.000026 sec
+%On process 1, For destination 4, Time = 0.000039 sec
+%On process 1, For destination 8, Time = 0.000028 sec
+%On process 1, For destination 16, Time = 0.000034 sec
+%On process 1, For destination 32, Time = 0.000023 sec
+%On process 1, For destination 56, Time = 0.000015 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000002 sec
+%On process 1, For destination 8, Time = 0.000010 sec
+%On process 1, For destination 16, Time = 0.000002 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000011 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000047 sec
+%On process 1, For destination 8, Time = 0.000051 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000010 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000043 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000002 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000008 sec
+%On process 1, For destination 32, Time = 0.000011 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%Blocking
+%N = 100000000
+%On process 1, For destination 2, Time = 0.027350 sec
+%On process 1, For destination 4, Time = 0.028082 sec
+%On process 1, For destination 8, Time = 0.027280 sec
+%On process 1, For destination 16, Time = 0.027273 sec
+%On process 1, For destination 32, Time = 0.027445 sec
+%On process 1, For destination 56, Time = 0.028388 sec
+%On process 1, For destination 2, Time = 0.008285 sec
+%On process 1, For destination 4, Time = 0.008367 sec
+%On process 1, For destination 8, Time = 0.008552 sec
+%On process 1, For destination 16, Time = 0.009228 sec
+%On process 1, For destination 32, Time = 0.008424 sec
+%On process 1, For destination 56, Time = 0.011647 sec
+%On process 1, For destination 2, Time = 0.008352 sec
+%On process 1, For destination 4, Time = 0.008776 sec
+%On process 1, For destination 8, Time = 0.008411 sec
+%On process 1, For destination 16, Time = 0.008277 sec
+%On process 1, For destination 32, Time = 0.008233 sec
+%On process 1, For destination 56, Time = 0.012235 sec
+%On process 1, For destination 2, Time = 0.008344 sec
+%On process 1, For destination 4, Time = 0.008291 sec
+%On process 1, For destination 8, Time = 0.008527 sec
+%On process 1, For destination 16, Time = 0.008302 sec
+%On process 1, For destination 32, Time = 0.008205 sec
+%On process 1, For destination 56, Time = 0.011305 sec
+%On process 1, For destination 2, Time = 0.008392 sec
+%On process 1, For destination 4, Time = 0.008351 sec
+%On process 1, For destination 8, Time = 0.008324 sec
+%On process 1, For destination 16, Time = 0.008213 sec
+%On process 1, For destination 32, Time = 0.008203 sec
+%On process 1, For destination 56, Time = 0.011191 sec
+%Non Blocking
+%N = 100000000
+%On process 1, For destination 2, Time = 0.000048 sec
+%On process 1, For destination 4, Time = 0.000125 sec
+%On process 1, For destination 8, Time = 0.000050 sec
+%On process 1, For destination 16, Time = 0.000008 sec
+%On process 1, For destination 32, Time = 0.000007 sec
+%On process 1, For destination 56, Time = 0.000015 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000002 sec
+%On process 1, For destination 8, Time = 0.000002 sec
+%On process 1, For destination 16, Time = 0.000002 sec
+%On process 1, For destination 32, Time = 0.000002 sec
+%On process 1, For destination 56, Time = 0.000001 sec
+%On process 1, For destination 2, Time = 0.000001 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000002 sec
+%On process 1, For destination 16, Time = 0.000001 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000002 sec
+%On process 1, For destination 2, Time = 0.000002 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000145 sec
+%On process 1, For destination 32, Time = 0.000027 sec
+%On process 1, For destination 56, Time = 0.000022 sec
+%On process 1, For destination 2, Time = 0.000002 sec
+%On process 1, For destination 4, Time = 0.000001 sec
+%On process 1, For destination 8, Time = 0.000001 sec
+%On process 1, For destination 16, Time = 0.000009 sec
+%On process 1, For destination 32, Time = 0.000001 sec
+%On process 1, For destination 56, Time = 0.000019 sec
+%\end{lstlisting}
+%
+%We measure the latency and the bandwidth following \href{https://www.researchgate.net/post/What_does_Mpi_ping_pong_latency_mean_what_is_its_reasonable_range_and_how_can_I_remove_it}{this} linear model:
+%$$
+%	T(n) = A\,n + L,
+%$$
+%where $T$ is time, $n$ is data size, and $L$ is latency. Then the bandwidth must be equal to $n / (T - L)$.
+%To this end, we average the above data for each value of $n$ and seek for the best fit:
+%
+%\includegraphicsw[.7]{l.pdf}
+%
+%We get that the latency is equal to 0.000047 seconds, and the average bandwidth (of the network connecting the nodes on Bridges) is $1.3\times10^{12}$ MB/s.
+%
+%\section{Broadcast and reduction}
+%
+%We modify the code in the following way:
+%
+%\textbf{Broadcast}
+%\begin{lstlisting}[basicstyle=\footnotesize]
+%/*--Include standard I/O C header file */
+%#include <stdio.h>
+%#include <stdlib.h> // rand
+%#include <time.h>
+%#include "math.h"
+%/*--Include the MPI header file */
+%#include "mpi.h"
+%#include <malloc.h>
+%
+%#ifdef ONEMB
+%#define N 1000000
+%#endif
+%
+%#ifdef TENMB
+%#define N 10000000
+%#endif
+%
+%#ifdef HUNDREDMB
+%#define N 100000000 //100000000 elements of CHAR ~= 100MB data
+%#endif
+%
+%/*--Template for MPI Programs in C */
+%
+%int main( int argc, char* argv[])
+%{
+%/*--Declare all variables and arrays. */
+%char *array;
+%int myid,numprocs,i;
+%double start, end;
+%double local_time, global_max_time, global_min_time, global_sum_time;
+%
+%array = (char*)malloc(sizeof(char)*N);
+%
+%MPI_Init(&argc,&argv);        /* --> Required statement */
+%MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+%MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+%
+%//TODO: Change condition of following "if" statement accordingly
+%//to randomly select a source process instead of zero.
+%//initialize array on root process
+%
+%int sid;
+%if (myid == 0) {
+%srand(time(NULL));
+%sid = rand() % numprocs;
+%}
+%MPI_Bcast(&sid, 1, MPI_INT, 0, MPI_COMM_WORLD);
+%
+%if(myid==sid){
+%printf("source process: %d\n", sid);
+%for(i=0;i<N;array[i++]='a');
+%}
+%
+%start = MPI_Wtime();
+%
+%MPI_Bcast(array, N, MPI_CHAR, sid, MPI_COMM_WORLD);
+%
+%end = MPI_Wtime();
+%
+%local_time = end-start;
+%
+%//Get MAX time out of all local times
+%MPI_Reduce(&local_time, &global_max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+%//Get MIN time out of all local times
+%MPI_Reduce(&local_time, &global_min_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+%//Get sum of all local times, then divide it by numprocs to get average time.
+%MPI_Reduce(&local_time, &global_sum_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+%
+%
+%if(myid==0){
+%MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
+%printf("Max time: %f seconds.\nMin Time: %f seconds.\nAvg Time: %f seconds.\n",global_max_time,global_min_time,(global_sum_time/numprocs)); 
+%}
+%/*--Finilize MPI */
+%MPI_Finalize();              /* ---> Required statement */
+%free(array);
+%return 0;
+%}
+%\end{lstlisting}
+%
+%\textbf{Reduction}
+%\begin{lstlisting}[basicstyle=\footnotesize]
+%/*--Include standard I/O C header file */
+%#include <stdio.h>
+%#include <time.h>
+%#include <stdlib.h> // rand
+%#include "math.h"
+%/*--Include the MPI header file */
+%#include "mpi.h"
+%#include <malloc.h>
+%
+%//Remember that we use "double" datatype(8 bytes) in this program
+%//so calculate N according to datasize you need
+%#ifdef ONEMB
+%#define N 125000
+%#endif
+%
+%#ifdef TENMB
+%#define N 1250000
+%#endif
+%
+%#ifdef HUNDREDMB
+%#define N 12500000 //12500000 elements of DOUBLE ~= 100MB data
+%#endif
+%
+%
+%/*--Template for MPI Programs in C */
+%
+%int main( int argc, char* argv[])
+%{
+%/*--Declare all variables and arrays. */
+%double *array;
+%double sum=0,global_sum;
+%int myid,numprocs,i;
+%double start, end;
+%double local_time, global_max_time, global_min_time, global_sum_time;
+%
+%array = malloc(sizeof(double)*N);
+%
+%MPI_Init(&argc,&argv);        /* --> Required statement */
+%MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+%MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+%
+%//initialize array on all processes	
+%for(i=0;i<N;i++){
+%array[i] = (i*0.5+myid);
+%}
+%
+%int sid;
+%if (myid == 0) {
+%srand(time(NULL));
+%sid = rand() % numprocs;
+%}
+%MPI_Bcast(&sid, 1, MPI_INT, 0, MPI_COMM_WORLD);
+%
+%if (myid == sid)
+%printf("source process: %d\n", sid);
+%
+%start = MPI_Wtime();
+%
+%for(i=0;i<N;i++){
+%sum += array[i];
+%}
+%//Reduce sums from all ranks to rank ZERO.
+%//Modify this call to select a random process as reduce result gatherer instead of rank ZERO process.
+%MPI_Reduce(&sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, sid, MPI_COMM_WORLD);
+%
+%
+%end = MPI_Wtime();
+%
+%local_time = end-start;
+%
+%//Get MAX time out of all local times
+%MPI_Reduce(&local_time, &global_max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+%//Get MIN time out of all local times
+%MPI_Reduce(&local_time, &global_min_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+%//Get sum of all local times, then divide it by numprocs to get average time.
+%MPI_Reduce(&local_time, &global_sum_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+%
+%
+%if(myid==0){
+%MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
+%printf("Max time: %f seconds.\nMin Time: %f seconds.\nAvg Time: %f seconds.\n",global_max_time,global_min_time,(global_sum_time/numprocs)); 
+%//printf("Global sum is: %f\n",global_sum);
+%}
+%/*--Finilize MPI */
+%MPI_Finalize();              /* ---> Required statement */
+%free(array);
+%return 0;
+%} 
+%\end{lstlisting}
+%
+%We use \texttt{rand()} to pick a random process id \texttt{sid} of the source process to broadcast from (ditto reduce in). Note that we generate the value for \texttt{sid} \textbf{only} on the master process, and then broadcast it to the other processes.
+%
+%\textbf{Broadcast/reduce 2 processes} (1st line = 1 MB, 2nd = 100 MB, 3d = 1000 MB)
+%\begin{lstlisting}[basicstyle=\footnotesize]
+%Broadcast 2 processes
+%source process: 1
+%Max time: 0.003321 seconds.
+%Min Time: 0.000690 seconds.
+%Avg Time: 0.002006 seconds.
+%source process: 1
+%Max time: 0.025725 seconds.
+%Min Time: 0.003362 seconds.
+%Avg Time: 0.014544 seconds.
+%source process: 1
+%Max time: 0.245682 seconds.
+%Min Time: 0.028223 seconds.
+%Avg Time: 0.136953 seconds.
+%Reduce 2 processes
+%source process: 1
+%Max time: 0.000416 seconds.
+%Min Time: 0.000414 seconds.
+%Avg Time: 0.000415 seconds.
+%source process: 0
+%Max time: 0.004453 seconds.
+%Min Time: 0.003458 seconds.
+%Avg Time: 0.003955 seconds.
+%source process: 0
+%Max time: 0.035099 seconds.
+%Min Time: 0.035087 seconds.
+%Avg Time: 0.035093 seconds.
+%\end{lstlisting}
+%
+%\textbf{Broadcast/reduce 56 processes} (1st line = 1 MB, 2nd = 100 MB, 3d = 1000 MB)
+%\begin{lstlisting}[basicstyle=\footnotesize]
+%Broadcast 56 processes
+%source process: 43
+%Max time: 0.006427 seconds.
+%Min Time: 0.002071 seconds.
+%Avg Time: 0.005898 seconds.
+%source process: 1
+%Max time: 0.046163 seconds.
+%Min Time: 0.022381 seconds.
+%Avg Time: 0.045175 seconds.
+%source process: 40
+%Max time: 0.317864 seconds.
+%Min Time: 0.087732 seconds.
+%Avg Time: 0.310122 seconds.
+%Reduce 56 processes
+%source process: 12
+%Max time: 0.001520 seconds.
+%Min Time: 0.000363 seconds.
+%Avg Time: 0.000710 seconds.
+%source process: 12
+%Max time: 0.013091 seconds.
+%Min Time: 0.003468 seconds.
+%Avg Time: 0.006824 seconds.
+%source process: 8
+%Max time: 0.067157 seconds.
+%Min Time: 0.035266 seconds.
+%Avg Time: 0.040893 seconds.
+%\end{lstlisting}
+%
+%Average times are presented in Figure~\ref{fig:br}.
+%
+%\begin{figure}[H]
+%	\caption{Broadcast (top) and reduction (bottom) mean time} \label{fig:br}
+%	\centering
+%	\begin{subfigure}{.9\linewidth}
+%		\includegraphicsw{broad.pdf}
+%	\end{subfigure}%
+%	\vskip .4cm 
+%	\begin{subfigure}{.9\linewidth}
+%		\includegraphicsw{red.pdf}
+%	\end{subfigure}%
+%\end{figure}
+%
+%We see that reduction turns out to be $\sim{}10$ times faster than broadcasting. 
+%
+%A possible explanation is the following. In order to do the reduction, one can combine a value between each pair of processes (independently), then repeat this again and so forth. This leads to $O(\log n)$ complexity.
+%
+%On the other hand, it might be the case that MPI broadcast is implemented using non-blocking point-to-point communication (sending from the process containing the information to all other processes) with a \textbf{wait-all} after the communication, see \href{https://stackoverflow.com/a/17113577/6712873}{here}.
+%
+%(We also need to take into account the physical network itself, i.e. we need to keep in mind that the distance between the nodes is not the same. However, we somehow excluded this variable via picking processes randomly.)
+%
+%\section{Group and communicator creation}
+%
+%Our (modified) code does the following: It takes the number of processes and divides them into two groups, then creates a communicator for each group and computes the sum of the ranks included in that group.
+%\textbf{Modified code:}
+%\begin{lstlisting}[basicstyle=\footnotesize]
+%#include "mpi.h"
+%#include <stdio.h>
+%#include <stdlib.h>
+%
+%#ifndef NPROCS
+%#define NPROCS 8 
+%#endif
+%int main(int argc, char *argv[])  {
+%int        global_rank, local_rank, sendbuf, recvbuf, numtasks;
+%
+%// NGROUPS = number of groups,
+%// 	GSIZE = number of group memebers
+%// 	ranks = array of ranks included in same group as *this* process
+%// 	gid = group id of *this* process  
+%int NGROUPS = 2, GSIZE = NPROCS/NGROUPS, ranks[GSIZE], gid, i;
+%
+%MPI_Group  orig_group, new_group;
+%MPI_Comm   new_comm;
+%
+%MPI_Init(&argc,&argv);
+%MPI_Comm_rank(MPI_COMM_WORLD, &global_rank);
+%MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
+%
+%//  Figure out this process group id; distrupe ranks round robin
+%gid = global_rank%NGROUPS;
+%
+%//  Fill This processes group ranks round robin.
+%for(i = 0; i < GSIZE; i++){
+%ranks[i] = gid + i*NGROUPS;
+%} 
+%
+%
+%if (numtasks != NPROCS) {
+%printf("Number of processes must be equal to NPROCS=%d. Terminating.\n",NPROCS);
+%MPI_Finalize();
+%exit(0);
+%}
+%
+%sendbuf = global_rank;
+%
+%/* Extract the original group handle */
+%MPI_Comm_group(MPI_COMM_WORLD, &orig_group);
+%
+%//  no need for if statement since ranks is filled for this process
+%MPI_Group_incl(orig_group, GSIZE, ranks, &new_group);
+%
+%
+%/* Create new new communicator and then perform collective communications */
+%MPI_Comm_create_group(MPI_COMM_WORLD, new_group, gid, &new_comm);
+%
+%//  Make sure *this* process is in new_comm (not needed)
+%if(MPI_COMM_NULL != new_comm){
+%MPI_Allreduce(&sendbuf, &recvbuf, 1, MPI_INT, MPI_SUM, new_comm);
+%MPI_Group_rank (new_group, &local_rank);
+%}
+%printf("Global rank= %d, Group rank= %d, recvbuf= %d\n",global_rank,local_rank,recvbuf);
+%
+%//  Free Allocated Resources (not needed)
+%MPI_Group_free(&orig_group);
+%MPI_Group_free(&new_group);
+%MPI_Comm_free(&new_comm);
+%
+%MPI_Finalize();
+%}
+%\end{lstlisting}
+%
+%\textbf{Output:}
+%\begin{lstlisting}[basicstyle=\footnotesize]
+%Run for 4 procs
+%Global rank= 0, Group rank= 0, recvbuf= 2
+%Global rank= 2, Group rank= 1, recvbuf= 2
+%Global rank= 3, Group rank= 1, recvbuf= 4
+%Global rank= 1, Group rank= 0, recvbuf= 4
+%-----------------------------------------
+%Run for 8 procs
+%Global rank= 0, Group rank= 0, recvbuf= 12
+%Global rank= 2, Group rank= 1, recvbuf= 12
+%Global rank= 4, Group rank= 2, recvbuf= 12
+%Global rank= 6, Group rank= 3, recvbuf= 12
+%Global rank= 5, Group rank= 2, recvbuf= 16
+%Global rank= 7, Group rank= 3, recvbuf= 16
+%Global rank= 1, Group rank= 0, recvbuf= 16
+%Global rank= 3, Group rank= 1, recvbuf= 16
+%-----------------------------------------
+%Run for 16 procs
+%Global rank= 0, Group rank= 0, recvbuf= 56
+%Global rank= 1, Group rank= 0, recvbuf= 64
+%Global rank= 2, Group rank= 1, recvbuf= 56
+%Global rank= 3, Group rank= 1, recvbuf= 64
+%Global rank= 4, Group rank= 2, recvbuf= 56
+%Global rank= 5, Group rank= 2, recvbuf= 64
+%Global rank= 6, Group rank= 3, recvbuf= 56
+%Global rank= 7, Group rank= 3, recvbuf= 64
+%Global rank= 8, Group rank= 4, recvbuf= 56
+%Global rank= 9, Group rank= 4, recvbuf= 64
+%Global rank= 10, Group rank= 5, recvbuf= 56
+%Global rank= 11, Group rank= 5, recvbuf= 64
+%Global rank= 12, Group rank= 6, recvbuf= 56
+%Global rank= 13, Group rank= 6, recvbuf= 64
+%Global rank= 14, Group rank= 7, recvbuf= 56
+%Global rank= 15, Group rank= 7, recvbuf= 64
+%-----------------------------------------
+%Run for 32 procs
+%Global rank= 0, Group rank= 0, recvbuf= 240
+%Global rank= 4, Group rank= 2, recvbuf= 240
+%Global rank= 12, Group rank= 6, recvbuf= 240
+%Global rank= 14, Group rank= 7, recvbuf= 240
+%Global rank= 16, Group rank= 8, recvbuf= 240
+%Global rank= 20, Group rank= 10, recvbuf= 240
+%Global rank= 15, Group rank= 7, recvbuf= 256
+%Global rank= 17, Group rank= 8, recvbuf= 256
+%Global rank= 21, Group rank= 10, recvbuf= 256
+%Global rank= 1, Group rank= 0, recvbuf= 256
+%Global rank= 2, Group rank= 1, recvbuf= 240
+%Global rank= 5, Group rank= 2, recvbuf= 256
+%Global rank= 6, Group rank= 3, recvbuf= 240
+%Global rank= 8, Group rank= 4, recvbuf= 240
+%Global rank= 13, Group rank= 6, recvbuf= 256
+%Global rank= 18, Group rank= 9, recvbuf= 240
+%Global rank= 28, Group rank= 14, recvbuf= 240
+%Global rank= 3, Group rank= 1, recvbuf= 256
+%Global rank= 7, Group rank= 3, recvbuf= 256
+%Global rank= 9, Group rank= 4, recvbuf= 256
+%Global rank= 19, Group rank= 9, recvbuf= 256
+%Global rank= 30, Group rank= 15, recvbuf= 240
+%Global rank= 10, Group rank= 5, recvbuf= 240
+%Global rank= 31, Group rank= 15, recvbuf= 256
+%Global rank= 22, Group rank= 11, recvbuf= 240
+%Global rank= 11, Group rank= 5, recvbuf= 256
+%Global rank= 24, Group rank= 12, recvbuf= 240
+%Global rank= 29, Group rank= 14, recvbuf= 256
+%Global rank= 23, Group rank= 11, recvbuf= 256
+%Global rank= 25, Group rank= 12, recvbuf= 256
+%Global rank= 26, Group rank= 13, recvbuf= 240
+%Global rank= 27, Group rank= 13, recvbuf= 256
+%-----------------------------------------
+%Run for 64 procs
+%Global rank= 12, Group rank= 6, recvbuf= 992
+%Global rank= 14, Group rank= 7, recvbuf= 992
+%Global rank= 16, Group rank= 8, recvbuf= 992
+%Global rank= 28, Group rank= 14, recvbuf= 992
+%Global rank= 0, Group rank= 0, recvbuf= 992
+%Global rank= 60, Group rank= 30, recvbuf= 992
+%Global rank= 30, Group rank= 15, recvbuf= 992
+%Global rank= 4, Group rank= 2, recvbuf= 992
+%Global rank= 6, Group rank= 3, recvbuf= 992
+%Global rank= 8, Group rank= 4, recvbuf= 992
+%Global rank= 18, Group rank= 9, recvbuf= 992
+%Global rank= 20, Group rank= 10, recvbuf= 992
+%Global rank= 62, Group rank= 31, recvbuf= 992
+%Global rank= 32, Group rank= 16, recvbuf= 992
+%Global rank= 2, Group rank= 1, recvbuf= 992
+%Global rank= 44, Group rank= 22, recvbuf= 992
+%Global rank= 24, Group rank= 12, recvbuf= 992
+%Global rank= 10, Group rank= 5, recvbuf= 992
+%Global rank= 46, Group rank= 23, recvbuf= 992
+%Global rank= 48, Group rank= 24, recvbuf= 992
+%Global rank= 50, Group rank= 25, recvbuf= 992
+%Global rank= 40, Group rank= 20, recvbuf= 992
+%Global rank= 56, Group rank= 28, recvbuf= 992
+%Global rank= 22, Group rank= 11, recvbuf= 992
+%Global rank= 52, Group rank= 26, recvbuf= 992
+%Global rank= 34, Group rank= 17, recvbuf= 992
+%Global rank= 54, Group rank= 27, recvbuf= 992
+%Global rank= 36, Group rank= 18, recvbuf= 992
+%Global rank= 38, Group rank= 19, recvbuf= 992
+%Global rank= 42, Group rank= 21, recvbuf= 992
+%Global rank= 26, Group rank= 13, recvbuf= 992
+%Global rank= 58, Group rank= 29, recvbuf= 992
+%Global rank= 63, Group rank= 31, recvbuf= 1024
+%Global rank= 15, Group rank= 7, recvbuf= 1024
+%Global rank= 31, Group rank= 15, recvbuf= 1024
+%Global rank= 1, Group rank= 0, recvbuf= 1024
+%Global rank= 3, Group rank= 1, recvbuf= 1024
+%Global rank= 7, Group rank= 3, recvbuf= 1024
+%Global rank= 9, Group rank= 4, recvbuf= 1024
+%Global rank= 13, Group rank= 6, recvbuf= 1024
+%Global rank= 17, Group rank= 8, recvbuf= 1024
+%Global rank= 19, Group rank= 9, recvbuf= 1024
+%Global rank= 47, Group rank= 23, recvbuf= 1024
+%Global rank= 61, Group rank= 30, recvbuf= 1024
+%Global rank= 29, Group rank= 14, recvbuf= 1024
+%Global rank= 11, Group rank= 5, recvbuf= 1024
+%Global rank= 5, Group rank= 2, recvbuf= 1024
+%Global rank= 21, Group rank= 10, recvbuf= 1024
+%Global rank= 45, Group rank= 22, recvbuf= 1024
+%Global rank= 23, Group rank= 11, recvbuf= 1024
+%Global rank= 25, Group rank= 12, recvbuf= 1024
+%Global rank= 49, Group rank= 24, recvbuf= 1024
+%Global rank= 51, Group rank= 25, recvbuf= 1024
+%Global rank= 33, Group rank= 16, recvbuf= 1024
+%Global rank= 35, Group rank= 17, recvbuf= 1024
+%Global rank= 55, Group rank= 27, recvbuf= 1024
+%Global rank= 39, Group rank= 19, recvbuf= 1024
+%Global rank= 57, Group rank= 28, recvbuf= 1024
+%Global rank= 41, Group rank= 20, recvbuf= 1024
+%Global rank= 43, Group rank= 21, recvbuf= 1024
+%Global rank= 27, Group rank= 13, recvbuf= 1024
+%Global rank= 59, Group rank= 29, recvbuf= 1024
+%Global rank= 37, Group rank= 18, recvbuf= 1024
+%Global rank= 53, Group rank= 26, recvbuf= 1024
+%-----------------------------------------
+%\end{lstlisting}
+%
+%The concept of groups and local communicators is useful for creating groups of processes that communicate with one another, i.e. live inside their own ``scopes''. 
+%
+%This is great in cases where parallelization leads to creating tasks that can be done in parallel + that are large, so that we do not want to assign the task to a single process. For example, when dealing with problems in multiphysics such as FSI or multi-physics PDE problems. 
+%
+%Examples of where groups would not be useful might be where the instructions and data is fairly homogeneous, or where tasks cannot be guaranteed to interact with a fixed set of other processors.
+
+\bibliographystyle{plain}
+\bibliography{bibl}
+
+\end{document}
