@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <ctime>
 
 #include <omp.h>
 
@@ -31,6 +32,25 @@ const unsigned int dimension             = 3;
 const unsigned int n_mesh_refinements 	 = 4;
 const unsigned int num_threads			 = 4;
 
+template<int dim>
+void check_mult(MatrixBase<dim> const & A, SparseMatrix<double> const & B, ConstraintMatrix const & constraints) {
+	std::srand(std::time(nullptr));
+	auto n = B.n();
+	Vector<double> vec(n), a(n), b(n);
+	for (unsigned int i = 0; i < n; ++i) vec[i] = 2. * std::rand() / RAND_MAX - 1; // values in [-1, 1]
+	A.Vmult(vec, a);
+	B.vmult(b, vec);
+	constraints.distribute(b);
+	// vec.print();
+	// std::cout << '\n';
+	// a.print();
+	// std::cout << '\n';
+	// b.print();
+	a.sadd(-1., b);
+	auto diff = a.l2_norm();
+	if (diff > 1e-8) throw std::logic_error("Invalid multiplication implementation, diff = " + std::to_string(diff));
+	std::cout << "Multiplication test passed, diff = " + std::to_string(diff) + '\n';
+}
 
 template<int dim>
 void run_test(const MatrixBase<dim> &system_matrix, const Vector<double> &vec, Vector<double> &out_vec){
@@ -82,12 +102,15 @@ void run(unsigned int n_refinements, unsigned int fe_degree){
 	
 		// Set Timer Here
 		CRSMatrix<dim> crs_matrix(dof_handler, fe, constraints);
+		auto const & assembled_mtx = crs_matrix.system_matrix;
+		check_mult<dim>(crs_matrix, assembled_mtx, constraints);
 		run_test<dim>(crs_matrix, in_vec, out_vec);
 		// End Here
 		
 
 		// Set Timer Here
 		MFMatrix<dim> mf_matrix(dof_handler, fe, constraints);
+		// check_mult<dim>(mf_matrix, assembled_mtx, constraints);
 		run_test<dim>(mf_matrix, in_vec, out_vec);
 		// End Timer Here
 				

@@ -22,9 +22,9 @@ public:
 template<int dim>
 class CRSMatrix : public MatrixBase<dim> {
     SparsityPattern sparsity_pattern;
-    SparseMatrix<double> system_matrix;
     ConstraintMatrix constraints;
 public:
+	SparseMatrix<double> system_matrix;
 	CRSMatrix(const DoFHandler<dim> &dof_handler, const FE_Q<dim> &fe, const ConstraintMatrix &constraints) : constraints(constraints) {
         std::cout << "Create sparsity pattern . . .\n";
         DynamicSparsityPattern dsp(dof_handler.n_dofs());
