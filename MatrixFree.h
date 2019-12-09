@@ -21,17 +21,17 @@ public:
 
 template<int dim>
 class CRSMatrix : public MatrixBase<dim> {
+    SparsityPattern sparsity_pattern;
     SparseMatrix<double> system_matrix;
     ConstraintMatrix constraints;
-    SparsityPattern sparsity_pattern;
 public:
 	CRSMatrix(const DoFHandler<dim> &dof_handler, const FE_Q<dim> &fe, const ConstraintMatrix &constraints) : constraints(constraints) {
-        // sparsity pattern
+        std::cout << "Create sparsity pattern . . .\n";
         DynamicSparsityPattern dsp(dof_handler.n_dofs());
         DoFTools::make_sparsity_pattern(dof_handler, dsp, constraints);
         sparsity_pattern.copy_from(dsp);
         system_matrix.reinit(sparsity_pattern);
-        // assembly
+        std::cout << "Assemble mtx . . .\n";
         QGauss<dim> quadrature_formula(fe.degree + 1);
         FEValues<dim> fe_values(fe, quadrature_formula, update_values | update_gradients | update_quadrature_points | update_JxW_values);
         const unsigned int dofs_per_cell = fe.dofs_per_cell;
