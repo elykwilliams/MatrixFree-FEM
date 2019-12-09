@@ -33,7 +33,7 @@ const unsigned int num_threads			 = 4;
 
 
 template<int dim>
-void run_test(const MatrixBase &system_matrix, const Vector<double> &vec, Vector<double> &out_vec){
+void run_test(const MatrixBase<dim> &system_matrix, const Vector<double> &vec, Vector<double> &out_vec){
 	constexpr unsigned int NTEST = 200;
 	
 	for(unsigned int i = 0; i < NTEST; ++i){

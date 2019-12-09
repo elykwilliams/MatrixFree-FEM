@@ -1,5 +1,6 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/fe_values.h>
 #include <deal.II/lac/constraint_matrix.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
@@ -55,13 +56,14 @@ public:
             cell->get_dof_indices(local_dof_indices);
             constraints.distribute_local_to_global(cell_matrix, local_dof_indices, system_matrix);
 	}
+	}
 	void Vmult(const Vector<double> &src, Vector<double> &dst) const override {
         dst = 0.;
         for (unsigned int i = 0; i < system_matrix.m(); ++i) {
             auto val = system_matrix.begin(i);
-            for (unsigned int k = 0; k < sparsity_pattern.column_number(i); ++k, ++val) {
+            for (unsigned int k = 0; k < sparsity_pattern.row_length(i); ++k, ++val) {
                 auto j = sparsity_pattern.column_number(i, k);
-                dst[i] += *val * src[j];
+                dst[i] += val->value() * src[j];
             }
         }
         constraints.distribute(dst);
