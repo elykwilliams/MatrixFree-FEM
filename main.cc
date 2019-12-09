@@ -71,49 +71,36 @@ void run(unsigned int n_refinements, unsigned int fe_degree){
 	ConstraintMatrix constraints;
 	
 	for (unsigned int cycle = 0; cycle < n_refinements; ++cycle){
-
-
+		std::cout << "Cycle = " << cycle << '\n';
 		if (cycle == 0){
 			GridGenerator::hyper_cube(triangulation, 0., 1.);
 			triangulation.refine_global(1);
 		
 			GridTools::distort_random(0.25, triangulation);				
 		}
-	
+		std::cout << "Refine . . .\n";
 		triangulation.refine_global(1);
-		
-	
+		std::cout << "Distribute dofs . . .\n";
 		dof_handler.distribute_dofs(fe);
 		//DoFRenumbering::Cuthill_McKee(dof_handler);
-
+		std::cout << "Proccess constraints / BCs . . .\n";
 		constraints.clear();
 		DoFTools::make_hanging_node_constraints(dof_handler, constraints);
-		VectorTools::interpolate_boundary_values(dof_handler,
-												 0,
-												 Functions::ZeroFunction<dim>(),
-												 constraints);
+		VectorTools::interpolate_boundary_values(dof_handler, 0, Functions::ZeroFunction<dim>(), constraints);
 		constraints.close();
-
+                std::cout << "n_dofs = " << dof_handler.n_dofs() << '\n';       
 		Vector<double> in_vec(dof_handler.n_dofs()), out_vec(dof_handler.n_dofs());
-		
-		std::cout << "Cycle = " << cycle << "; " 
-			      << "n_dofs = " << dof_handler.n_dofs()
-				  << std::endl;
-	
 		// Set Timer Here
 		CRSMatrix<dim> crs_matrix(dof_handler, fe, constraints);
 		auto const & assembled_mtx = crs_matrix.system_matrix;
 		check_mult<dim>(crs_matrix, assembled_mtx, constraints);
 		run_test<dim>(crs_matrix, in_vec, out_vec);
 		// End Here
-		
-
 		// Set Timer Here
 		MFMatrix<dim> mf_matrix(dof_handler, fe, constraints);
 		// check_mult<dim>(mf_matrix, assembled_mtx, constraints);
 		run_test<dim>(mf_matrix, in_vec, out_vec);
-		// End Timer Here
-				
+		// End Timer Here	
 	};
 }
 
