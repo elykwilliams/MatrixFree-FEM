@@ -26,12 +26,6 @@
 
 using namespace dealii;
 
-
-const unsigned int degree_finite_element = 2;
-const unsigned int dimension             = 3;
-const unsigned int n_mesh_refinements 	 = 4;
-unsigned int num_threads		 = 4;
-
 template<int dim>
 void check_mult(MatrixBase<dim> const & A, SparseMatrix<double> const & B, ConstraintMatrix const & constraints) {
 	std::srand(std::time(nullptr));
@@ -108,10 +102,43 @@ void run(unsigned int n_refinements, unsigned int fe_degree){
 
 int main(int argc, char* argv[])
 try{
-	if (argc >= 2) num_threads = atoi(argv[1]);
-	std::cout << "Using " << num_threads << " threads\n";
-	omp_set_num_threads(num_threads);
-	run<dimension>(n_mesh_refinements, degree_finite_element);
+
+	int n_mesh_refinements = 4;
+	int degree_finite_element = 3;
+	int dimension = 3;
+
+	for( int i = 0; i < argc/2; i++ ){
+		char flag = argv[2*i+1][1];
+		int value = atoi(argv[2*i+2]);
+
+		switch(flag){
+		case 'r': 
+			n_mesh_refinements = value;
+			std::cout << "Refinements = " << n_mesh_refinements << std::endl;
+			break;
+		case 'N':			
+			std::cout << "Using " << value << " threads\n";
+			omp_set_num_threads(value);
+			break;
+		case 'p':
+			degree_finite_element = value;
+			std::cout << "Degree = " << degree_finite_element << std::endl;
+			break;
+		case 'd': 
+			dimension = value;
+			std::cout << "Dimension = " << dimension << std::endl;
+			break;
+		default: 
+			break;
+		}
+	}	
+
+	
+	if (dimension == 2)
+		run<2>(n_mesh_refinements, degree_finite_element);
+	else if (dimension == 3)
+		run<3>(n_mesh_refinements, degree_finite_element);
+
 	return 0;
 }
 catch (std::exception &exc){
