@@ -59,7 +59,8 @@ public:
 	}
 	void Vmult(const Vector<double> &src, Vector<double> &dst) const override {
         dst = 0.;
-        for (unsigned int i = 0; i < system_matrix.m(); ++i) {
+        #pragma omp parallel for
+	for (unsigned int i = 0; i < system_matrix.m(); ++i) {
             auto val = system_matrix.begin(i);
             for (unsigned int k = 0; k < sparsity_pattern.row_length(i); ++k, ++val) {
                 auto j = sparsity_pattern.column_number(i, k);

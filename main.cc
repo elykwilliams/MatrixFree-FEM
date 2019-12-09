@@ -30,7 +30,7 @@ using namespace dealii;
 const unsigned int degree_finite_element = 2;
 const unsigned int dimension             = 3;
 const unsigned int n_mesh_refinements 	 = 4;
-const unsigned int num_threads			 = 4;
+unsigned int num_threads		 = 4;
 
 template<int dim>
 void check_mult(MatrixBase<dim> const & A, SparseMatrix<double> const & B, ConstraintMatrix const & constraints) {
@@ -119,12 +119,12 @@ void run(unsigned int n_refinements, unsigned int fe_degree){
 
 
 
-int main(int, char **)
+int main(int argc, char* argv[])
 try{
+	if (argc >= 2) num_threads = atoi(argv[1]);
+	std::cout << "Using " << num_threads << " threads\n";
 	omp_set_num_threads(num_threads);
-
 	run<dimension>(n_mesh_refinements, degree_finite_element);
-
 	return 0;
 }
 catch (std::exception &exc){
