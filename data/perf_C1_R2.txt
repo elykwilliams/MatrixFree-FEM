@@ -1,70 +1,84 @@
 Using CRS Matrix
+Using 1 threads
+n_dofs = 15625
+Elapsed Time: 0.823377
+
+ Performance counter stats for './MatrixFree -C 1 -r 2 -N 1 -p 3 -d 3':
+
+       110,002,758      cache-references                                            
+        20,858,313      cache-misses              #   18.962 % of all cache refs    
+    78,507,597,056      cycles                                                      
+    16,709,583,380      instructions              #    0.21  insn per cycle         
+
+       1.424123791 seconds time elapsed
+
+Using CRS Matrix
 Using 24 threads
 n_dofs = 15625
-Elapsed Time: 0.113017
+Elapsed Time: 0.098398
 
  Performance counter stats for './MatrixFree -C 1 -r 2 -N 24 -p 3 -d 3':
 
-        36,437,627      cache-references                                            
-        10,600,871      cache-misses              #   29.093 % of all cache refs    
-    27,502,965,278      cycles                                                      
-    12,299,761,977      instructions              #    0.45  insn per cycle         
+        34,492,648      cache-references                                            
+        10,012,921      cache-misses              #   29.029 % of all cache refs    
+    25,326,396,732      cycles                                                      
+    11,845,955,138      instructions              #    0.47  insn per cycle         
 
-       0.719668012 seconds time elapsed
+       0.710621928 seconds time elapsed
 
 Using CRS Matrix
 Using 48 threads
 n_dofs = 15625
-Elapsed Time: 0.163766
+Elapsed Time: 0.146167
 
  Performance counter stats for './MatrixFree -C 1 -r 2 -N 48 -p 3 -d 3':
 
-        45,008,401      cache-references                                            
-        11,522,232      cache-misses              #   25.600 % of all cache refs    
-    41,619,724,425      cycles                                                      
-    16,288,102,703      instructions              #    0.39  insn per cycle         
+        44,347,148      cache-references                                            
+        11,038,643      cache-misses              #   24.891 % of all cache refs    
+    34,423,848,354      cycles                                                      
+    14,606,748,078      instructions              #    0.42  insn per cycle         
 
-       0.737609069 seconds time elapsed
+       0.780584444 seconds time elapsed
 
 Using CRS Matrix
 Using 96 threads
 n_dofs = 15625
-Elapsed Time: 0.273023
+Elapsed Time: 0.265727
 
  Performance counter stats for './MatrixFree -C 1 -r 2 -N 96 -p 3 -d 3':
 
-        76,735,853      cache-references                                            
-        20,785,610      cache-misses              #   27.087 % of all cache refs    
-    76,439,642,043      cycles                                                      
-    28,340,453,832      instructions              #    0.37  insn per cycle         
+        77,545,830      cache-references                                            
+        23,600,809      cache-misses              #   30.435 % of all cache refs    
+    77,895,399,342      cycles                                                      
+    28,134,718,723      instructions              #    0.36  insn per cycle         
 
-       0.903824373 seconds time elapsed
+       0.978574341 seconds time elapsed
 
 Using CRS Matrix
 Using 144 threads
 n_dofs = 15625
-Elapsed Time: 0.503537
+Elapsed Time: 0.490613
 
  Performance counter stats for './MatrixFree -C 1 -r 2 -N 144 -p 3 -d 3':
 
-       197,598,302      cache-references                                            
-        21,941,965      cache-misses              #   11.104 % of all cache refs    
-   145,692,093,321      cycles                                                      
-    58,993,280,158      instructions              #    0.40  insn per cycle         
+       205,979,759      cache-references                                            
+        20,405,064      cache-misses              #    9.906 % of all cache refs    
+   131,777,240,804      cycles                                                      
+    52,176,764,232      instructions              #    0.40  insn per cycle         
 
-       1.185962176 seconds time elapsed
+       1.159609063 seconds time elapsed
 
 Using CRS Matrix
 Using 288 threads
 n_dofs = 15625
-Elapsed Time: 1.80765
+Elapsed Time: 1.73382
 
  Performance counter stats for './MatrixFree -C 1 -r 2 -N 288 -p 3 -d 3':
 
-     1,220,171,011      cache-references                                            
-       144,305,518      cache-misses              #   11.827 % of all cache refs    
-   552,757,671,546      cycles                                                      
-   211,988,727,536      instructions              #    0.38  insn per cycle         
+     1,105,663,812      cache-references                                            
+       101,856,009      cache-misses              #    9.212 % of all cache refs    
+   507,776,592,637      cycles                                                      
+   177,488,990,368      instructions              #    0.35  insn per cycle         
 
-       2.682878129 seconds time elapsed
+       2.568359751 seconds time elapsed
 

@@ -1,70 +1,84 @@
 Using Matrix Free
+Using 1 threads
+n_dofs = 15625
+Elapsed Time: 0.816869
+
+ Performance counter stats for './MatrixFree -C 0 -r 2 -N 1 -p 3 -d 3':
+
+       207,277,774      cache-references                                            
+        41,637,160      cache-misses              #   20.088 % of all cache refs    
+   185,271,995,343      cycles                                                      
+    24,118,460,877      instructions              #    0.13  insn per cycle         
+
+       1.412262458 seconds time elapsed
+
+Using Matrix Free
 Using 24 threads
 n_dofs = 15625
-Elapsed Time: 0.0486422
+Elapsed Time: 0.0470009
 
  Performance counter stats for './MatrixFree -C 0 -r 2 -N 24 -p 3 -d 3':
 
-        25,447,037      cache-references                                            
-         8,084,705      cache-misses              #   31.771 % of all cache refs    
-    19,300,373,329      cycles                                                      
-     8,254,028,027      instructions              #    0.43  insn per cycle         
+        24,261,153      cache-references                                            
+         7,997,261      cache-misses              #   32.963 % of all cache refs    
+    18,574,103,441      cycles                                                      
+     7,923,803,716      instructions              #    0.43  insn per cycle         
 
-       0.629050219 seconds time elapsed
+       0.671279363 seconds time elapsed
 
 Using Matrix Free
 Using 48 threads
 n_dofs = 15625
-Elapsed Time: 0.0394609
+Elapsed Time: 0.03635
 
  Performance counter stats for './MatrixFree -C 0 -r 2 -N 48 -p 3 -d 3':
 
-        24,447,553      cache-references                                            
-         7,019,592      cache-misses              #   28.713 % of all cache refs    
-    17,950,402,186      cycles                                                      
-     8,767,459,594      instructions              #    0.49  insn per cycle         
+        22,912,923      cache-references                                            
+         7,013,194      cache-misses              #   30.608 % of all cache refs    
+    15,167,953,318      cycles                                                      
+     7,892,369,032      instructions              #    0.52  insn per cycle         
 
-       0.636010214 seconds time elapsed
+       0.651122524 seconds time elapsed
 
 Using Matrix Free
 Using 96 threads
 n_dofs = 15625
-Elapsed Time: 0.0506191
+Elapsed Time: 0.239058
 
  Performance counter stats for './MatrixFree -C 0 -r 2 -N 96 -p 3 -d 3':
 
-        30,689,201      cache-references                                            
-         9,594,682      cache-misses              #   31.264 % of all cache refs    
-    26,854,657,716      cycles                                                      
-    12,053,640,115      instructions              #    0.45  insn per cycle         
+        83,164,927      cache-references                                            
+        31,034,749      cache-misses              #   37.317 % of all cache refs    
+    74,695,438,190      cycles                                                      
+    26,429,833,486      instructions              #    0.35  insn per cycle         
 
-       0.680047397 seconds time elapsed
+       0.919350465 seconds time elapsed
 
 Using Matrix Free
 Using 144 threads
 n_dofs = 15625
-Elapsed Time: 0.141817
+Elapsed Time: 0.0945148
 
  Performance counter stats for './MatrixFree -C 0 -r 2 -N 144 -p 3 -d 3':
 
-        92,606,378      cache-references                                            
-        14,389,256      cache-misses              #   15.538 % of all cache refs    
-    65,453,764,899      cycles                                                      
-    25,990,514,815      instructions              #    0.40  insn per cycle         
+        84,752,000      cache-references                                            
+        12,263,554      cache-misses              #   14.470 % of all cache refs    
+    47,519,635,399      cycles                                                      
+    21,304,792,204      instructions              #    0.45  insn per cycle         
 
-       0.874831660 seconds time elapsed
+       0.826885828 seconds time elapsed
 
 Using Matrix Free
 Using 288 threads
 n_dofs = 15625
-Elapsed Time: 0.247139
+Elapsed Time: 0.243493
 
  Performance counter stats for './MatrixFree -C 0 -r 2 -N 288 -p 3 -d 3':
 
-       220,269,758      cache-references                                            
-        27,493,109      cache-misses              #   12.482 % of all cache refs    
-   103,724,392,422      cycles                                                      
-    42,232,212,368      instructions              #    0.41  insn per cycle         
+       317,706,501      cache-references                                            
+        35,696,852      cache-misses              #   11.236 % of all cache refs    
+   117,046,649,141      cycles                                                      
+    48,118,853,147      instructions              #    0.41  insn per cycle         
 
-       1.055275941 seconds time elapsed
+       1.088747279 seconds time elapsed
 
