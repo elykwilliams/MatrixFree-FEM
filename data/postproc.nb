@@ -1,0 +1,257 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 12.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      9017,        249]
+NotebookOptionsPosition[      8262,        231]
+NotebookOutlinePosition[      8596,        246]
+CellTagsIndexPosition[      8553,        243]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"SetDirectory", "[", 
+   RowBox[{"NotebookDirectory", "[", "]"}], "]"}], ";"}]], "Input",
+ CellChangeTimes->{{3.7791630159015627`*^9, 3.779163129640627*^9}, {
+   3.779163199276594*^9, 3.779163304543529*^9}, {3.779163381260281*^9, 
+   3.7791634103689537`*^9}, 3.779164539134261*^9, {3.779165509382609*^9, 
+   3.7791655405823517`*^9}, {3.7792225774339447`*^9, 3.779222591443081*^9}, {
+   3.7792226317382917`*^9, 3.779222632114307*^9}},
+ CellLabel->"In[15]:=",ExpressionUUID->"31f7499e-6342-405f-863d-8f2349178def"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"mfFiles", "=", 
+   RowBox[{"Import", "/@", 
+    RowBox[{"FileNames", "[", 
+     RowBox[{"\"\<Timing_C0_R\>\"", "~~", "__", "~~", "\"\<.txt\>\""}], 
+     "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"clFiles", "=", 
+   RowBox[{"Import", "/@", 
+    RowBox[{"FileNames", "[", 
+     RowBox[{"\"\<Timing_C1_R\>\"", "~~", "__", "~~", "\"\<.txt\>\""}], 
+     "]"}]}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.784960351902236*^9, 3.784960356920864*^9}, {
+  3.784960401994495*^9, 3.784960455011791*^9}, {3.784960486613052*^9, 
+  3.784960497189477*^9}, {3.78496055251232*^9, 3.7849606205528107`*^9}},
+ CellLabel->"In[38]:=",ExpressionUUID->"ed5757b8-8fef-4bf9-81a0-237c78f00c19"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"dofs", "=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"ToExpression", "@", 
+      RowBox[{
+       RowBox[{"StringSplit", "[", "#", "]"}], "[", 
+       RowBox[{"[", "9", "]"}], "]"}]}], "&"}], "/@", "mfFiles"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"threads", "=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"ToExpression", "@", 
+      RowBox[{
+       RowBox[{"StringSplit", "[", "#", "]"}], "[", 
+       RowBox[{"[", "2", "]"}], "]"}]}], "&"}], "/@", 
+    RowBox[{"Select", "[", 
+     RowBox[{
+      RowBox[{"StringSplit", "[", 
+       RowBox[{
+        RowBox[{"mfFiles", "[", 
+         RowBox[{"[", "1", "]"}], "]"}], ",", "\"\<\\n\>\""}], "]"}], ",", 
+      RowBox[{
+       RowBox[{"StringMatchQ", "[", 
+        RowBox[{"#", ",", 
+         RowBox[{"\"\<Using\>\"", "~~", "__", "~~", "\"\<threads\>\""}]}], 
+        "]"}], "&"}]}], "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"mfTime", "=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"ToExpression", "@", 
+         RowBox[{
+          RowBox[{"StringSplit", "[", "#", "]"}], "[", 
+          RowBox[{"[", "3", "]"}], "]"}]}], "&"}], "/@", 
+       RowBox[{"Select", "[", 
+        RowBox[{
+         RowBox[{"StringSplit", "[", 
+          RowBox[{"#", ",", "\"\<\\n\>\""}], "]"}], ",", 
+         RowBox[{
+          RowBox[{"StringMatchQ", "[", 
+           RowBox[{"#", ",", 
+            RowBox[{"\"\<Elapsed Time:\>\"", "~~", "__"}]}], "]"}], "&"}]}], 
+        "]"}]}], ")"}], "&"}], "/@", "mfFiles"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"clTime", "=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"ToExpression", "@", 
+         RowBox[{
+          RowBox[{"StringSplit", "[", "#", "]"}], "[", 
+          RowBox[{"[", "3", "]"}], "]"}]}], "&"}], "/@", 
+       RowBox[{"Select", "[", 
+        RowBox[{
+         RowBox[{"StringSplit", "[", 
+          RowBox[{"#", ",", "\"\<\\n\>\""}], "]"}], ",", 
+         RowBox[{
+          RowBox[{"StringMatchQ", "[", 
+           RowBox[{"#", ",", 
+            RowBox[{"\"\<Elapsed Time:\>\"", "~~", "__"}]}], "]"}], "&"}]}], 
+        "]"}]}], ")"}], "&"}], "/@", "clFiles"}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.784961400823554*^9, 3.7849615944955873`*^9}, {
+  3.784961705087028*^9, 3.7849617877523613`*^9}, {3.7849618765850277`*^9, 
+  3.784961915700859*^9}, {3.784961949409142*^9, 3.7849619516127653`*^9}, {
+  3.7849620926118393`*^9, 3.7849621124440928`*^9}, {3.7849621446984377`*^9, 
+  3.7849622304457283`*^9}, {3.784962290871566*^9, 3.784962486814376*^9}},
+ CellLabel->
+  "In[143]:=",ExpressionUUID->"aca5f4c3-e1cf-42b8-a0c8-8fac02188ba2"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"Transpose", "[", "mfTime", "]"}], "[", 
+  RowBox[{"[", "1", "]"}], "]"}]], "Input",
+ CellChangeTimes->{{3.7849626482756767`*^9, 3.784962695918076*^9}},
+ CellLabel->
+  "In[155]:=",ExpressionUUID->"385fc409-95a4-4121-9edb-f1a78b1b9452"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"mfTimeVal", "=", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{"Transpose", "@", 
+      RowBox[{"{", 
+       RowBox[{"dofs", ",", 
+        RowBox[{
+         RowBox[{"Transpose", "[", "mfTime", "]"}], "[", 
+         RowBox[{"[", "i", "]"}], "]"}]}], "}"}]}], ",", 
+     RowBox[{"{", 
+      RowBox[{"i", ",", 
+       RowBox[{"Length", "@", 
+        RowBox[{"Transpose", "[", "mfTime", "]"}]}]}], "}"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"clTimeVal", "=", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{"Transpose", "@", 
+      RowBox[{"{", 
+       RowBox[{"dofs", ",", 
+        RowBox[{
+         RowBox[{"Transpose", "[", "clTime", "]"}], "[", 
+         RowBox[{"[", "i", "]"}], "]"}]}], "}"}]}], ",", 
+     RowBox[{"{", 
+      RowBox[{"i", ",", 
+       RowBox[{"Length", "@", 
+        RowBox[{"Transpose", "[", "clTime", "]"}]}]}], "}"}]}], "]"}]}], 
+  ";"}]}], "Input",
+ CellChangeTimes->{{3.7849627316852837`*^9, 3.784962771895423*^9}, {
+  3.7849628108545437`*^9, 3.784962824606579*^9}, {3.784963003027359*^9, 
+  3.784963013359681*^9}},
+ CellLabel->
+  "In[161]:=",ExpressionUUID->"4fc023b4-f212-4034-bd48-5df7b0ddabe4"],
+
+Cell[BoxData[{
+ RowBox[{"ListLogLogPlot", "[", 
+  RowBox[{"mfTimeVal", ",", 
+   RowBox[{"Joined", "\[Rule]", "True"}], ",", 
+   RowBox[{"PlotMarkers", "\[Rule]", 
+    RowBox[{"{", 
+     RowBox[{"Automatic", ",", "Medium"}], "}"}]}], ",", 
+   RowBox[{"PlotLegends", "\[Rule]", 
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"ToString", "@", "#"}], "<>", "\"\< threads\>\""}], "&"}], 
+      ")"}], "/@", "threads"}]}], ",", 
+   RowBox[{"AxesLabel", "\[Rule]", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"Style", "[", 
+        RowBox[{"#", ",", "12"}], "]"}], "&"}], "/@", 
+      RowBox[{"{", 
+       RowBox[{"\"\<   Matrix size\>\"", ",", "\"\<Time, s\>\""}], "}"}]}], 
+     ")"}]}], ",", 
+   RowBox[{"ImageSize", "\[Rule]", "Large"}]}], 
+  "]"}], "\[IndentingNewLine]", 
+ RowBox[{"ListLogLogPlot", "[", 
+  RowBox[{"clTimeVal", ",", 
+   RowBox[{"Joined", "\[Rule]", "True"}], ",", 
+   RowBox[{"PlotMarkers", "\[Rule]", 
+    RowBox[{"{", 
+     RowBox[{"Automatic", ",", "Medium"}], "}"}]}], ",", 
+   RowBox[{"PlotLegends", "\[Rule]", 
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"ToString", "@", "#"}], "<>", "\"\< threads\>\""}], "&"}], 
+      ")"}], "/@", "threads"}]}], ",", 
+   RowBox[{"AxesLabel", "\[Rule]", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"Style", "[", 
+        RowBox[{"#", ",", "12"}], "]"}], "&"}], "/@", 
+      RowBox[{"{", 
+       RowBox[{"\"\<   Matrix size\>\"", ",", "\"\<Time, s\>\""}], "}"}]}], 
+     ")"}]}], ",", 
+   RowBox[{"ImageSize", "\[Rule]", "Large"}]}], "]"}]}], "Input",
+ CellChangeTimes->{{3.779164996080525*^9, 3.779165002743734*^9}, {
+   3.779165246845874*^9, 3.77916529814361*^9}, 3.77916542523455*^9, {
+   3.7791655483786163`*^9, 3.779165548913859*^9}, {3.784962532981667*^9, 
+   3.7849625861111317`*^9}, 3.784962710940917*^9, 3.7849628344726543`*^9, {
+   3.78496287965374*^9, 3.784962888627268*^9}, {3.784962996706563*^9, 
+   3.7849630209193277`*^9}, {3.784963285218692*^9, 3.784963368130003*^9}, {
+   3.784963571989522*^9, 3.7849636705682096`*^9}, {3.784963715500939*^9, 
+   3.7849637471632566`*^9}},
+ CellLabel->
+  "In[195]:=",ExpressionUUID->"b1705393-33ab-4283-bd0e-e2035f40ec62"]
+},
+WindowSize->{1853, 1025},
+WindowMargins->{{Automatic, 0}, {0, Automatic}},
+FrontEndVersion->"12.0 for Linux x86 (64-bit) (April 8, 2019)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 546, 9, 31, "Input",ExpressionUUID->"31f7499e-6342-405f-863d-8f2349178def"],
+Cell[1107, 31, 723, 16, 55, "Input",ExpressionUUID->"ed5757b8-8fef-4bf9-81a0-237c78f00c19"],
+Cell[1833, 49, 2713, 76, 101, "Input",ExpressionUUID->"aca5f4c3-e1cf-42b8-a0c8-8fac02188ba2"],
+Cell[4549, 127, 269, 6, 31, "Input",ExpressionUUID->"385fc409-95a4-4121-9edb-f1a78b1b9452"],
+Cell[4821, 135, 1200, 35, 55, "Input",ExpressionUUID->"4fc023b4-f212-4034-bd48-5df7b0ddabe4"],
+Cell[6024, 172, 2234, 57, 78, "Input",ExpressionUUID->"b1705393-33ab-4283-bd0e-e2035f40ec62"]
+}
+]
+*)
+
