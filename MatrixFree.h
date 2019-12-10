@@ -103,7 +103,8 @@ public:
 	#pragma omp parallel
 	#pragma omp single
 	{
-		auto cell = dofh.begin_active(), endc = dofh.end();
+		auto cell = dofh.begin_active();
+		decltype(cell) endc = dofh.end();
 		for(; cell != endc; cell++){
 			#pragma omp task firstprivate(cell)
 			{	
