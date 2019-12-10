@@ -13,7 +13,8 @@
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_tools.h>
-
+#include <deal.II/grid/grid_out.h>
+ 
 #include <deal.II/numerics/vector_tools.h>
 
 #include <iostream>
@@ -58,7 +59,7 @@ void run_test(const MatrixBase<dim> &system_matrix, const Vector<double> &vec, V
 
 
 template <int dim>
-void run(unsigned int n_refinements, unsigned int fe_degree){
+void run(unsigned int n_refinements, unsigned int fe_degree, bool do_crs){
 
 	Triangulation<dim> triangulation;
 	DoFHandler<dim> dof_handler(triangulation);
@@ -71,10 +72,11 @@ void run(unsigned int n_refinements, unsigned int fe_degree){
 			GridGenerator::hyper_cube(triangulation, 0., 1.);
 			triangulation.refine_global(1);
 		
-			GridTools::distort_random(0.25, triangulation);				
 		}
 		std::cout << "Refine . . .\n";
 		triangulation.refine_global(1);
+		GridTools::distort_random(0.05, triangulation);				
+		
 		std::cout << "Distribute dofs . . .\n";
 		dof_handler.distribute_dofs(fe);
 		//DoFRenumbering::Cuthill_McKee(dof_handler);
@@ -83,19 +85,22 @@ void run(unsigned int n_refinements, unsigned int fe_degree){
 		DoFTools::make_hanging_node_constraints(dof_handler, constraints);
 		//VectorTools::interpolate_boundary_values(dof_handler, 0, Functions::ZeroFunction<dim>(), constraints);
 		constraints.close();
-                std::cout << "n_dofs = " << dof_handler.n_dofs() << '\n';       
+        
+        std::cout << "n_dofs = " << dof_handler.n_dofs() << '\n';       
+		
 		Vector<double> in_vec(dof_handler.n_dofs()), out_vec(dof_handler.n_dofs());
-		// Set Timer Here
-		CRSMatrix<dim> crs_matrix(dof_handler, fe, constraints);
-		auto const & assembled_mtx = crs_matrix.system_matrix;
-		check_mult<dim>(crs_matrix, assembled_mtx, constraints);
-		// run_test<dim>(crs_matrix, in_vec, out_vec);
-		// End Here
-		// Set Timer Here
-		MFMatrix<dim> mf_matrix(dof_handler, fe, constraints);
-		check_mult<dim>(mf_matrix, assembled_mtx, constraints);
-		run_test<dim>(mf_matrix, in_vec, out_vec);
-		// End Timer Here	
+		
+		if(do_crs){
+			CRSMatrix<dim> crs_matrix(dof_handler, fe, constraints);
+			// auto const & assembled_mtx = crs_matrix.system_matrix;
+			// check_mult<dim>(crs_matrix, assembled_mtx, constraints);
+			run_test<dim>(crs_matrix, in_vec, out_vec);
+		}
+		else{
+			MFMatrix<dim> mf_matrix(dof_handler, fe, constraints);
+			// check_mult<dim>(mf_matrix, assembled_mtx, constraints);
+			run_test<dim>(mf_matrix, in_vec, out_vec);
+		}
 	};
 }
 
@@ -107,6 +112,7 @@ try{
 	int n_mesh_refinements = 4;
 	int degree_finite_element = 3;
 	int dimension = 3;
+	bool do_crs = true;
 
 	for( int i = 0; i < argc/2; i++ ){
 		char flag = argv[2*i+1][1];
@@ -129,6 +135,13 @@ try{
 			dimension = value;
 			std::cout << "Dimension = " << dimension << std::endl;
 			break;
+		case 'C':
+			do_crs = bool(value);
+			if(do_crs) 
+				std::cout << "Using CRS Matrix" << std::endl;
+			else 
+				std::cout << "Using Matrix Free" <<std::endl;
+			break;
 		default: 
 			break;
 		}
@@ -136,9 +149,9 @@ try{
 
 	
 	if (dimension == 2)
-		run<2>(n_mesh_refinements, degree_finite_element);
+		run<2>(n_mesh_refinements, degree_finite_element, do_crs);
 	else if (dimension == 3)
-		run<3>(n_mesh_refinements, degree_finite_element);
+		run<3>(n_mesh_refinements, degree_finite_element, do_crs);
 
 	return 0;
 }
