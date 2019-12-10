@@ -26,12 +26,12 @@ class CRSMatrix : public MatrixBase<dim> {
 public:
 	SparseMatrix<double> system_matrix;
 	CRSMatrix(const DoFHandler<dim> &dof_handler, const FE_Q<dim> &fe, const ConstraintMatrix &constraints) : constraints(constraints) {
-        std::cout << "Create sparsity pattern . . .\n";
+        // std::cout << "Create sparsity pattern . . .\n";
         DynamicSparsityPattern dsp(dof_handler.n_dofs());
         DoFTools::make_sparsity_pattern(dof_handler, dsp, constraints);
         sparsity_pattern.copy_from(dsp);
         system_matrix.reinit(sparsity_pattern);
-        std::cout << "Assemble mtx . . .\n";
+        // std::cout << "Assemble mtx . . .\n";
         #pragma omp parallel
 		#pragma omp single
 		{

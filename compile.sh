@@ -9,7 +9,7 @@ rm -rf ./build
 mkdir build
 cd build 
 cmake ..
-
+cp ../run.sh .
 
 ## Compile
-make -j48
+make -j48 release

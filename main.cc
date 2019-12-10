@@ -50,7 +50,7 @@ void check_mult(MatrixBase<dim> const & A, SparseMatrix<double> const & B, Const
 
 template<int dim>
 void run_test(const MatrixBase<dim> &system_matrix, const Vector<double> &vec, Vector<double> &out_vec){
-	constexpr unsigned int NTEST = 200;
+	constexpr unsigned int NTEST = 5;
 	
 	for(unsigned int i = 0; i < NTEST; ++i){
 		system_matrix.Vmult(vec, out_vec);
@@ -66,7 +66,7 @@ void run(unsigned int n_refinements, unsigned int fe_degree, bool do_crs){
 	FE_Q<dim>       fe(fe_degree);
 	ConstraintMatrix constraints;
 	
-	std::cout << "Generate Triangulation . . ." << std::endl;
+	//std::cout << "Generate Triangulation . . ." << std::endl;
 	GridGenerator::hyper_cube(triangulation, 0., 1.);
 	for (unsigned int cycle = 0; cycle < n_refinements; ++cycle){
 			triangulation.refine_global(1);	
@@ -74,12 +74,12 @@ void run(unsigned int n_refinements, unsigned int fe_degree, bool do_crs){
 	triangulation.refine_global(1);
 	GridTools::distort_random(0.05, triangulation);				
 	
-	std::cout << "Distribute dofs . . .\n";
+	//std::cout << "Distribute dofs . . .\n";
 	dof_handler.distribute_dofs(fe);
 	//DoFRenumbering::Cuthill_McKee(dof_handler);
 	std::cout << "n_dofs = " << dof_handler.n_dofs() << '\n';       
 	
-	std::cout << "Proccess constraints / BCs . . .\n";
+	//std::cout << "Proccess constraints / BCs . . .\n";
 	constraints.clear();
 	DoFTools::make_hanging_node_constraints(dof_handler, constraints);
 	//VectorTools::interpolate_boundary_values(dof_handler, 0, Functions::ZeroFunction<dim>(), constraints);
@@ -87,7 +87,8 @@ void run(unsigned int n_refinements, unsigned int fe_degree, bool do_crs){
 	
 	Vector<double> in_vec(dof_handler.n_dofs()), out_vec(dof_handler.n_dofs());
 	
-	std::cout << "Running tests . . ." << std::endl;	
+	//std::cout << "Running tests . . ." << std::endl;	
+	double start = omp_get_wtime();
 	if(do_crs){
 		CRSMatrix<dim> crs_matrix(dof_handler, fe, constraints);
 		// auto const & assembled_mtx = crs_matrix.system_matrix;
@@ -99,6 +100,8 @@ void run(unsigned int n_refinements, unsigned int fe_degree, bool do_crs){
 		// check_mult<dim>(mf_matrix, assembled_mtx, constraints);
 		run_test<dim>(mf_matrix, in_vec, out_vec);
 	}
+	double end = omp_get_wtime();
+	std::cout << "Elapsed Time: " << end - start << std::endl;
 	
 }
 
@@ -119,19 +122,25 @@ try{
 		switch(flag){
 		case 'r': 
 			n_mesh_refinements = value;
-			std::cout << "Refinements = " << n_mesh_refinements << std::endl;
+			// std::cout << "Refinements = " << n_mesh_refinements << std::endl;
 			break;
 		case 'N':			
-			std::cout << "Using " << value << " threads\n";
-			omp_set_num_threads(value);
+			//omp_set_num_threads(value);
+			#pragma omp parallel
+			{
+				if(omp_get_thread_num() == 0)
+				{
+					std::cout << "Using " << omp_get_num_threads() << " threads\n";
+				}
+			}
 			break;
 		case 'p':
 			degree_finite_element = value;
-			std::cout << "Degree = " << degree_finite_element << std::endl;
+			// std::cout << "Degree = " << degree_finite_element << std::endl;
 			break;
 		case 'd': 
 			dimension = value;
-			std::cout << "Dimension = " << dimension << std::endl;
+			// std::cout << "Dimension = " << dimension << std::endl;
 			break;
 		case 'C':
 			do_crs = bool(value);
