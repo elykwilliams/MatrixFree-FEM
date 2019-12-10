@@ -32,31 +32,43 @@ public:
         sparsity_pattern.copy_from(dsp);
         system_matrix.reinit(sparsity_pattern);
         std::cout << "Assemble mtx . . .\n";
-        QGauss<dim> quadrature_formula(fe.degree + 1);
-        FEValues<dim> fe_values(fe, quadrature_formula, /*update_values |*/ update_gradients | update_quadrature_points | update_JxW_values);
-        const unsigned int dofs_per_cell = fe.dofs_per_cell;
-        const unsigned int n_q_points    = quadrature_formula.size();
-        FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
-        Vector<double>     cell_rhs(dofs_per_cell);
-        std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
-        for (auto const & cell : dof_handler.active_cell_iterators()) {
-            cell_matrix = 0.;
-            cell_rhs    = 0.;
-            fe_values.reinit(cell);
-            for (unsigned int q_index = 0; q_index < n_q_points; ++q_index) {
-                const double current_coefficient = this->coefficient(fe_values.quadrature_point(q_index));
-                for (unsigned int i = 0; i < dofs_per_cell; ++i)
-                    for (unsigned int j = 0; j < dofs_per_cell; ++j)
-                        cell_matrix(i, j) +=
-                                (current_coefficient *              // a(x_q)
-                                 fe_values.shape_grad(i, q_index) * // grad phi_i(x_q)
-                                 fe_values.shape_grad(j, q_index) * // grad phi_j(x_q)
-                                 fe_values.JxW(q_index));           // dx
-            }
-            cell->get_dof_indices(local_dof_indices);
-            constraints.distribute_local_to_global(cell_matrix, local_dof_indices, system_matrix);
+        #pragma omp parallel
+		#pragma omp single
+		{
+			for (auto const & cell : dof_handler.active_cell_iterators()) {
+				#pragma omp task firstprivate(cell)
+				{
+					QGauss<dim> quadrature_formula(fe.degree + 1);
+					FEValues<dim> fe_values(fe, quadrature_formula, update_gradients | update_quadrature_points | update_JxW_values);
+					const unsigned int dofs_per_cell = fe.dofs_per_cell;
+					const unsigned int n_q_points    = quadrature_formula.size();
+					FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
+					Vector<double>     cell_rhs(dofs_per_cell);
+					std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
+					
+					fe_values.reinit(cell);
+					for (unsigned int q_index = 0; q_index < n_q_points; ++q_index) {
+						const double current_coefficient = this->coefficient(fe_values.quadrature_point(q_index));
+						for (unsigned int i = 0; i < dofs_per_cell; ++i)
+							for (unsigned int j = 0; j < dofs_per_cell; ++j)
+								cell_matrix(i, j) +=
+										(current_coefficient *              // a(x_q)
+										 fe_values.shape_grad(i, q_index) * // grad phi_i(x_q)
+										 fe_values.shape_grad(j, q_index) * // grad phi_j(x_q)
+										 fe_values.JxW(q_index));           // dx
+					}
+					cell->get_dof_indices(local_dof_indices);
+					#pragma omp critical
+					{
+						constraints.distribute_local_to_global(cell_matrix, local_dof_indices, system_matrix);
+					}
+
+				}// end task
+			}// end cell
+		#pragma omp taskwait
+		}// end parallel
 	}
-	}
+
 	void Vmult(const Vector<double> &src, Vector<double> &dst) const override {
         dst = 0.;
         #pragma omp parallel for

@@ -88,8 +88,8 @@ void run(unsigned int n_refinements, unsigned int fe_degree){
 		// Set Timer Here
 		CRSMatrix<dim> crs_matrix(dof_handler, fe, constraints);
 		auto const & assembled_mtx = crs_matrix.system_matrix;
-		//check_mult<dim>(crs_matrix, assembled_mtx, constraints);
-		//run_test<dim>(crs_matrix, in_vec, out_vec);
+		check_mult<dim>(crs_matrix, assembled_mtx, constraints);
+		// run_test<dim>(crs_matrix, in_vec, out_vec);
 		// End Here
 		// Set Timer Here
 		MFMatrix<dim> mf_matrix(dof_handler, fe, constraints);
