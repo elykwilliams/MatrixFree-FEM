@@ -32,14 +32,15 @@ void check_mult(MatrixBase<dim> const & A, SparseMatrix<double> const & B, Const
 	auto n = B.n();
 	Vector<double> vec(n), a(n), b(n);
 	for (unsigned int i = 0; i < n; ++i) vec[i] = 2. * std::rand() / RAND_MAX - 1; // values in [-1, 1]
+	
 	A.Vmult(vec, a);
 	B.vmult(b, vec);
 	constraints.distribute(b);
-	// vec.print();
-	// std::cout << '\n';
-	// a.print();
-	// std::cout << '\n';
-	// b.print();
+    //vec.print();
+	//std::cout << '\n';
+	//a.print();
+	//std::cout << '\n';
+	//b.print();
 	a.sadd(-1., b);
 	auto diff = a.l2_norm();
 	if (diff > 1e-8) throw std::logic_error("Invalid multiplication implementation, diff = " + std::to_string(diff));
@@ -80,19 +81,19 @@ void run(unsigned int n_refinements, unsigned int fe_degree){
 		std::cout << "Proccess constraints / BCs . . .\n";
 		constraints.clear();
 		DoFTools::make_hanging_node_constraints(dof_handler, constraints);
-		VectorTools::interpolate_boundary_values(dof_handler, 0, Functions::ZeroFunction<dim>(), constraints);
+		//VectorTools::interpolate_boundary_values(dof_handler, 0, Functions::ZeroFunction<dim>(), constraints);
 		constraints.close();
                 std::cout << "n_dofs = " << dof_handler.n_dofs() << '\n';       
 		Vector<double> in_vec(dof_handler.n_dofs()), out_vec(dof_handler.n_dofs());
 		// Set Timer Here
 		CRSMatrix<dim> crs_matrix(dof_handler, fe, constraints);
 		auto const & assembled_mtx = crs_matrix.system_matrix;
-		check_mult<dim>(crs_matrix, assembled_mtx, constraints);
-		run_test<dim>(crs_matrix, in_vec, out_vec);
+		//check_mult<dim>(crs_matrix, assembled_mtx, constraints);
+		//run_test<dim>(crs_matrix, in_vec, out_vec);
 		// End Here
 		// Set Timer Here
 		MFMatrix<dim> mf_matrix(dof_handler, fe, constraints);
-		// check_mult<dim>(mf_matrix, assembled_mtx, constraints);
+		check_mult<dim>(mf_matrix, assembled_mtx, constraints);
 		run_test<dim>(mf_matrix, in_vec, out_vec);
 		// End Timer Here	
 	};
