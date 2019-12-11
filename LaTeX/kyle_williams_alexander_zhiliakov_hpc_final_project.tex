@@ -94,7 +94,8 @@
 \usepackage[bottom]{footmisc}
 \newcommand{\AZ}[1]{{\color{red}\textbf{AZ}:~#1}}
 \newcommand{\KW}[1]{{\color{blue}\textbf{KW}:~#1}}
-\newcommand{\dimSize}{n}
+\newcommand{\dimSize}{N}
+\newcommand{\dofspercell}{k}
 
 \title{COSC\,6365 -- Introduction to High Performance Computing, Fall 2019\\Final project: \textbf{Matrix-free finite element method}}
 \author{
@@ -208,28 +209,16 @@ Now $y_{tau} \in \mathbb{R}^{N}$ is the vector with entries corresponding to con
 It is important to note that there are no approximations being made and that the result of a standard matrix-vector multiplication and applicaiton of this matrix-free approach will give the exact same result. The only difference is that for the matrix-free approach we compute the cell matrices ``on the fly'' as needed; as opposed to precomputing them and storing them in a global matrix. This will obviously require a signifcantly larger number of flops, however the goal is to have a method that is cpu bounded and scales well as the number of processes is scaled up. The matrix free method ideally avoids memory speed limitations by not needing to access a global matrix at all. These benefits should become more visible as the matrix size become large and as the number of degrees of freedom per cell increases as well. For 2D problems with only a few degrees of freedom per cell the method is not expected to be as competative due to the overhead associated with each cell. 
 
 With the consideration that there will be a large overhead in computing the local matrix-vector product, there are a few optimizations that can be made. If for example we have that 
-$$\mathbf{A}^{cell}_{i,j} = \int_{\tau}\nabla \alpha(x) \varphi_{i}(x) \cdot \nabla \varphi_{j}(x) dx\quad i,j = 1 \ldots k$$ 
+$$\mathbf{A}^{cell}_{i,j} = \int_{\tau}\nabla \alpha(x) \varphi_{i}(x) \cdot \nabla \varphi_{j}(x) dx\quad i,j = 1 \ldots \dofspercell$$ 
 then we can do a change of coordinates to a reference cell
-$$\mathbf{A}^{cell}_{i,j} = \int_{ref} \alpha(T(\hat{x}) (J^{-T}\nabla \varphi_{i}(\hat{x})) \cdot (J^{-T}\nabla \varphi_{j}(\hat{x}))\,\vert \mathrm{det}J(T\hat{x}) \vert d\hat{x} \quad i,j = 1 \ldots k$$ 
+$$\mathbf{A}^{cell}_{i,j} = \int_{ref} \alpha(T(\hat{x}) (J^{-T}\nabla \varphi_{i}(\hat{x})) \cdot (J^{-T}\nabla \varphi_{j}(\hat{x}))\,\vert \mathrm{det}J(T\hat{x}) \vert d\hat{x} \quad i,j = 1 \ldots \dofspercell$$ 
 If this can then be rewritten as 
 \KW{make bold}
 $$\mathbf{A}^{cell}_{i,j} = B^{T}_{ref}J^{-1}_{cell}D_{cell}J^{-T}_{cell}B_{ref}$$
 Where $B_{ref}$ is a matrix of values of the gradient on the referece cell at each quadrature point, $J$ is the jacobian of the transformation from the reference cell to the cell, and $D$ is a diagonal matrix with values of $\alpha(T\hat{x})\, \vert \mathrm{det}J(T\hat{x}) \vert$ along the diagonal. This is bennificial because the  values of $B^{T}$ are the same for each cell and can be pre-computed.
 
-Note that if we were building a global matrix, this matrix product would need to be computed in order to distribute it to the global matrix. This grows more time consuming as the number dofs per cell grows, or as the nmber of integration points grows (typically the nubmer of quadrature points is approximatly equal to the degrees of freedom per cell). However, if we simply need to evaluate $A^{cell}x_{cell}$, we can use the decomposition to compute a series of matrix-vector products instead of having to multiply all of these matrices together. This reduces has the benefit of reducing the complexity of the work done per cell. 
+Note that if we were building a global matrix, this matrix product would need to be computed in order to distribute it to the global matrix. This grows more time consuming as the number dofs per cell grows, or as the nmber of integration points grows (typically the nubmer of quadrature points is dependent on the number of $\dofspercell$. However, if we simply need to evaluate $A^{cell}x_{cell}$, we can use the decomposition to compute a series of matrix-vector products instead of having to multiply all of these matrices together. This reduces has the benefit of reducing the complexity of the work done per cell. This has the effect of reducting the complexity per cell from $O(\dofspercell^{dim})$ to $O(\dofspercell)$; so we can expect that the matrix-free approach will be more competative as the number of $\dofspercell$ grows.
 
-
-
-
-
-Optimizations reference cell 
-
-Benefits Complexity 
-
-\begin{enumerate}
-% \item Matrix-free methods skip the storage of big global sparse matrices and compute the underlying weak forms on the fly. Since the memory transfer, i.e., the speed at which the data can be read from RAM memory, is the bottleneck for matrix-based computations rather than the actual arithmetic done using this data, a matrix-free evaluation that reads less data can be advantageous even if it does more computations. This concept is building upon a trend in computer architecture which is best described by the term memory wall, saying that compute performance has increased more rapidly than the memory performance. Thus, a certain degree of arithmetic operations is essentially for free, and this share has become larger during the last twenty years. It has enabled this radical algorithm switch going from a matrix-based to a matrix-free implementation of matrix-vector products for iterative solvers, besides their classical use in explicit time integration. Of course, the implementation must be efficient and there cannot be an excess in computations to make it a win in total. The deal.II library uses SIMD vectorization and highly optimized kernels based on templates of the polynomial degree to achieve this goal. To give a perspective, a sparse matrix-vector product for quadratic elements FE\_Q used to be equally fast as the matrix-free implementation on processors designed around 2005-2007 (e.g. Pentium 4 or AMD Opteron Barcelona with 2-4 cores per chip). By 2018, the matrix-free evaluation is around eight times as fast (measured on Intel Skylake Server, 14 cores).
-\item Matrix-free methods have a better complexity per degree of freedom as the degree is increased, due to sum factorization. The work per degree of freedom increases as (k) in the degree k for matrix-free schemes, whereas it increases as (kd) for matrix-based methods. This gives higher order schemes an edge. A particularly nice feature in matrix-free evaluation is that the (1) terms often dominate, so it appears that higher order methods are as fast in terms of evaluation time as low order ones, when they have the same number of degrees of freedom. For the implementation in deal.II, best throughput is typically achieved for polynomial degrees between three and six.
-\end{enumerate}
 
 \section{Implementation details}
 
