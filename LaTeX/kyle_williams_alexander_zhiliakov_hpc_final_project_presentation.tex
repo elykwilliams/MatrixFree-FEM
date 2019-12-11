@@ -132,8 +132,7 @@
 	\begin{frame}{Finite element method workflow \& motivation}
 		\begin{enumerate}
 			\item $L\,u = f$ + BCs $\Rightarrow$ Time discretization, linearization and finite element approximation $\Rightarrow$ Linear system~$\vect A\,\vect x = \vect b$ with \textbf{stiffness matrix}~$\vect A \in \mathbb R^{n\times n}$
-			\item For big complex problems, especially in 3D, it is typical to use an iterative solver with a suitable preconditioner to solve the system
-			\item The core operation is~$\vect x \mapsto \vect A\,\vect x \eqqcolon \vect z$
+			\item For~$L = -\nabla\cdot(\vect K\,\nabla)$ we have~$\vect A_{ij} = \int \vect K\,\nabla\phi_j\cdot\nabla\phi_i$ with $\phi_i$ being a basis function with a compact support; $\phi_i$ is typically chosen as a piecewise polynomial of degree~$k$.
 		\end{enumerate}
 		\begin{figure}
 			\begin{subfigure}{.5\linewidth}
@@ -142,14 +141,19 @@
 				{Nonzero pattern of~$\vect A$}
 			\end{subfigure}%
 			\begin{subfigure}{.5\linewidth}
-				$\vect A$ is \textbf{sparse}, i.e. it requires~$O(n)$ memory resources. Hence it is crucially important that the sparse matrix-vector multiplication is implemented efficiently.
+				$\vect A$ is \textbf{sparse}, \\i.e. it requires~$O(n)$ memory resources and $O(n)$ FLOPs when multiplying the matrix by a vector. 
 			\end{subfigure}
 		\end{figure}
 	\end{frame}
 
 	\begin{frame}{Stiffness matrix assembly}
-		For~$L = -\nabla\cdot(\vect K\,\nabla)$ we have~$\vect A_{ij} = \int \vect K\,\nabla\phi_j\cdot\nabla\phi_i$ with $\phi_i$ being a basis function with a compact support; $\phi_i$ is typically chosen as a piecewise polynomial of degree~$k$.
+		\begin{itemize}
+		\item For large complex problems, especially in 3D, it is typical to use an iterative solver with a suitable preconditioner to solve the system
+		\item The core operation is~$\vect x \mapsto \vect A\,\vect x \eqqcolon \vect z$
+		\item Hence it is crucially important that the sparse matrix-vector multiplication is implemented efficiently.
+		\end{itemize}
 		\begin{figure}
+
 			\begin{subfigure}{.45\linewidth}
 				\centering
 				\includegraphicsw[.8]{mesh.png}
@@ -168,7 +172,7 @@
 	\begin{frame}[fragile]{Sparse matrix-vector multiplication}
 		It is very common that $\vect A$ is represented in CSR format. In this case multiplication takes the form:
 		\begin{lstlisting}[basicstyle=\small]
-			for (size_t i = 0; i < nrows; ++i) 
+			for (i = 0; i < nrows; ++i) 
 				for (k = rowptr[i]; k < rowptr[i+1]; ++k)
 					z[i] += val[k] * x[colind[k]];
 		\end{lstlisting}
@@ -203,7 +207,7 @@
 		$$
 		with \textbf{fixed} gradient mtx~$\vect B_\text{ref\_cell}$, reference-to-physical cell transformation~$\vect J_\text{cell}$, and diagonal diffusion mtx~$D_\text{cell}$. This gives us
 		\begin{itemize}
-			\item Computation of~$\vect A_\text{cell}$ on the fly via applying matrix-vector products repeatedly, and
+			\item computation of~$\vect A_\text{cell}$ on the fly via applying matrix-vector products repeatedly, and
 			\item $O(k)$ complexity per degree of freedom
 		\end{itemize}
 	\end{frame}	
