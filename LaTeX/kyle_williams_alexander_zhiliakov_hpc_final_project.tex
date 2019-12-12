@@ -221,10 +221,55 @@ Note that if we were building a global matrix, this matrix product would need to
 
 
 \section{Implementation details}
+For this project we used the deal.II finite element library to handle the domain triangulation, dof enumeration, and the local to global index mapping. The two matrix multiplication methods were both implemented manually. The deal.II library has a tutorial on how to use their builtin matrix-free method; as well as a description of how the method is implemented internally. We used this description with modifications to implement our methods. In particular, the deal.II matrix-free builtin methods are designed around an MPI based parallelization \ref{above}; whereas we intended to use OpenMP based parallelization. We tested our implementation against deal.II's builit matrix-vector multiplication to ensure that they were in fact the same.
+\subsection{sparse matrix}
 
-\AZ{Refer to deal.II step; Point out what was changed and why; Explain compilation details}
+\subsection{matrix free}
+In this section we discuss the matrix-free vmult function that will take an input vector and compute the product $Ax$. In our implementation, this is a class member so a number of variables relating to the referece cell have been pre-computing in construction of the class.
 
-\subsection{Parallelization Details}
+Using the description above, we being with a loop over each cell. On each cell, we generate an omp task to compute the contributions from each cell.
+\begin{lstlisting}
+#pragma omp parallel
+#pragma omp single
+{
+  	for(cell = dofh.begin_active(); cell != dofh.end(); cell++){
+		#pragma omp task firstprivate(cell)
+		{
+			// cell computation
+		}
+	}
+	#pragma omp taskwait
+}            
+\end{lstlisting}
+
+We decided to use omp task because we are only able to iterate over deal.II's iterator type. Additionally, when the body of the loop is large, it can be beneficial to use an omp task as opposed to an omp parallel for. 
+
+Then for each cell we do the following
+\begin{enumerate}
+\item Initialize quadrature points and weights, the inverse of the jacobian and its determinant
+\item Initialize the local to global mapping
+\item Precompute $\alpha(q)$ at each quadrature point
+\item Extract input vector values at local dofs
+\begin{lstlisting}
+	Vector<double> cell_vec(dofs_per_cell);
+	for (unsigned int i = 0; i<dofs_per_cell; ++i)
+			cell_vec(i) = src(local_to_global[i]);
+\end{lstlisting}
+\item Apply $B_{ref}$ to 
+\item Apply $J^{-T}$
+\item Apply D
+\item Apply $J^{-1}$
+\item Apply $B^{T}_{ref}$
+\item Distribute local result to global result vector
+\begin{lstlisting}
+for(unsigned int i=0; i<dofs_per_cell; i++){
+#pragma omp atomic
+	dst(local_to_global[i]) += cell_vec_dest(i);
+}
+\end{lstlisting}
+\end{enumerate}
+We have to use atomic to avoid race conditions in accessing the shared global result. This could be avoided in two ways, one is to apply a coloring scheme to each cell so that no task accesses the same dof at the same time, or each thread could have a private global vector and then would to a reduction to merge them all together. We did not choose the later approach since it would create a very large memory footprint per thread. And in the former case, was outside the scope of our project.
+
 
 \section{Computational experiments}
 
