@@ -290,19 +290,23 @@ In this report we consider the following problem, let $\Omega = [0, 1]^{dim}$ be
 \begin{align*}
 &\text{Find } u_{h} \in H^{1}(\Omega) \text{ such that: }  \\
 &\begin{cases}
-\int_{\Omega} \alpha(x) \nabla u_{h} \cdot \nabla v_{h} dx \; \forall v_{h} \in H^{1}(\Omega) \\
+\int_{\Omega} \alpha(x) \nabla u_{h} \cdot \nabla v_{h} dx  = \int_{\Omega} f(x) v_{h} dx \; \forall v_{h} \in H^{1}(\Omega) \\
 \nabla u_{n} \cdot n = 0 \text{ on } \partial \Omega ,\qquad u_{h} \vert_{\tau} \in \mathbb{P}_{K}(\tau) 
 \end{cases}
 \end{align*}
-Where $\mathbb{P}_{k}(\tau) $ is the set of polynomials of at most degree $K$. We take $\alpha(x) = \frac{1}{0.05 + 2\vert \vert x \vert \vert^{2}}$.
+Where $\mathbb{P}_{k}(\tau) $ is the set of polynomials of at most degree $K$. We take $\alpha(x) = \frac{1}{0.05 + 2\vert \vert x \vert \vert^{2}}$. Since we are only interested in the speed of the matrix multiplications and do not actually solve the full differential equation, we do not need to specify $f$.
 
 For the triangulation we use $r$ global refinements of the unit cube and randomly perturb the vertices so that there is no possiblity of reuse of data between cells, see \ref{fig:mesh}. For the choice of finite elements, we choose polynomials of at most degree $K$, $\mathcal{Q}_{K}$; for integration we use a Gauss Quadrature of degree $K+1$. 
 
 We compared our implementation of the matrix-vector product using CRS format, and the matrix-free version. The comparison was done by taking measurements on 5 sucessive applications of the matrix-vector multiplication.
 
-For our experiments we varied $r$, $dim$, $K$, and the number of threads used $p$. We used perf to measure the number of cycles, instructions, cache references, and cache misses, as well as total run time. We also used omp\_get\_wtime() to specifically measure the time of the matrix-vector multiplication alone. In context, varying $r$ corresponds to increasing the number of cells; and increasing $dim$ and $K$ both increase the number of dofs per cell. 
+For our experiments we varied $r$, $dim$, $K$, and the number of threads used $p$. We used perf to measure the number of cycles, instructions, cache references, and cache misses, as well as total run time. We also used omp\_get\_wtime() to specifically measure the time of the matrix-vector multiplication alone. In context, varying $r$ corresponds to increasing the number of cells; and increasing $dim$ and $K$ both increase the number of dofs per cell. We also used RAPL to compute the power draw on the processors.
 
-\section{Results}
+We ran all these tests on the Stampede2 clusters using Intel Xeon Platinum 8160 ("Skylake") 2.1GHz processor. We did utilize hyper threading on up to three nodes with two sockets per node. We set OMP\_PROC\_BIND=close.
+
+\subsection{Results}
+In the following figures, we use fixed value of $K = 3$ and $dim = 3$. The different refinement levels led to matrices of dimension $N =$ 2\,197, 15\,625, 117\,649, and 912\,673. With these values of $N, K, dim$ the sparse matrix will have 256 non-zero entries per row, with the total size of the CRS matrix data being 1.81, 14.17, 111.98, 890.27 MB. As far as the matrix-free method is concerned, the local matrix will have a dimension of 64x64 for a size of 32.77 KB per thread; the corresponding number of cells was 64, 512, 4\,096, 32\,768. We only present results for thread numbers up to 96 threads for reasons discussed in the analysis.
+
 \begin{figure}[H]
 	\centering
 	\begin{subfigure}{.5\linewidth}
@@ -335,11 +339,13 @@ For our experiments we varied $r$, $dim$, $K$, and the number of threads used $p
 	\includegraphicsw[.9]{rapl.pdf}
 \end{table}
 
-\subsection{Analysis of results}
+\subsection{Analysis}
+
+\section{Summary}
 
 \subsection{Random Issues we ran in to}
 
-\subsection{Summary}
+
 
 
 \bibliographystyle{plain}
