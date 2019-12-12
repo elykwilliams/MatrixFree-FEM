@@ -78,16 +78,16 @@
 \newcommand{\cl}[1]{\texttt{\$~#1}}
 
 \usepackage{listings}
-%\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygreen}{rgb}{0,0.6,0}
 \lstset{
-%	language=C++,
-%	basicstyle=\footnotesize\ttfamily,
+	language=C++,
+	basicstyle=\small\ttfamily,
 	breaklines=true,
-%	commentstyle=\color{mygreen},
+	commentstyle=\color{mygreen},
 	frame=l,
 	xleftmargin=5pt,
 	tabsize=2,
-%	belowskip=-1pt
+	belowskip=-1pt
 } 
 
 % https://tex.stackexchange.com/questions/9425/how-to-fix-footnote-position-at-the-bottom-of-the-page
@@ -203,7 +203,7 @@ For big complex problems, especially in 3D, it is typical to use an iterative so
 \end{figure}
 
 One uses special matrix formats to represent sparse matrices in a computer to achieve~$O(\dimSize)$ memory requirements. One popular choice is \textit{compressed sparse row} (CSR) storage format, see e.g.~\cite{saad2003iterative}. This format is quite economic in terms of memory requirements and is convenient to perform the matrix-vector multiplication:
-\begin{lstlisting}[basicstyle=\small,caption={Implementation of the sparse matrix-vector multiplication~\eqref{mv} for CSR format},label={lst:csrmv},captionpos=b]
+\begin{lstlisting}[caption={Implementation of the sparse matrix-vector multiplication~\eqref{mv} for CSR format},label={lst:csrmv},captionpos=b]
 	for (i = 0; i < nrows; ++i) 
 		for (k = rowptr[i]; k < rowptr[i+1]; ++k)
 			z[i] += val[k] * x[colind[k]];
@@ -257,14 +257,14 @@ Note that if we were building a global matrix, this matrix product would need to
 
 
 \section{Implementation details}
+
 For this project we used the deal.II finite element library to handle the domain triangulation, dof enumeration, and the local to global index mapping. The two matrix multiplication methods were both implemented manually. The deal.II library has a tutorial on how to use their builtin matrix-free method; as well as a description of how the method is implemented internally. We used this description with modifications to implement our methods. In particular, the deal.II matrix-free builtin methods are designed around an MPI based parallelization \ref{above}; whereas we intended to use OpenMP based parallelization. We tested our implementation against deal.II's builit matrix-vector multiplication to ensure that they were in fact the same.
-\subsection{Sparse matrix}
 
 \subsection{Matrix-free}
 In this section we discuss the matrix-free vmult function that will take an input vector and compute the product $Ax$. In our implementation, this is a class member so a number of variables relating to the referece cell have been pre-computing in construction of the class.
 
 Using the description above, we being with a loop over each cell. On each cell, we use a single thread to generate an omp task to compute the contributions from each cell then wait for each task to complete before returning from the funciton. This taskwait is important so that the cell iterator does not go out of scope before a task has completed. 
-\begin{lstlisting}
+\begin{lstlisting}[caption={Matrix-free cell parallelization},,captionpos=b,label={lst:mfreepar}]
 #pragma omp parallel
 #pragma omp single
 {
@@ -306,6 +306,27 @@ for(unsigned int i=0; i<dofs_per_cell; i++){
 \end{enumerate}
 We have to use atomic to avoid race conditions in accessing the shared global result. This could be avoided in two ways, one is to apply a coloring scheme to each cell so that no task accesses the same dof at the same time, or each thread could have a private global vector and then would to a reduction to merge them all together. We did not choose the later approach since it would create a very large memory footprint per thread. And in the former case, was outside the scope of our project.
 
+\subsection{Explicit sparse matrix construction}
+
+\texttt{Vmult} member function for CSR implementation takes the following form: 
+\begin{lstlisting}[caption={CRS matrix multiplication with row-wise parallelization},captionpos=b]
+void Vmult(const Vector<double> &src, Vector<double> &dst) const override {
+dst = 0.;
+#pragma omp parallel for
+for (unsigned int i = 0; i < system_matrix.m(); ++i) {
+auto val = system_matrix.begin(i);
+for (unsigned int k = 0; k < sparsity_pattern.row_length(i); ++k, ++val) {
+auto j = sparsity_pattern.column_number(i, k);
+dst[i] += val->value() * src[j];
+}
+}
+constraints.distribute(dst);
+}
+\end{lstlisting}
+
+This is essentially implementation of Listing~\ref{lst:csrmv} that uses deal.II's interface for somewhat low-level access to~\texttt{system\_matrix} object through its sparsity pattern. Note that~\texttt{system\_matrix} itself has a method for multiplication, however, it does not use OpenMP; this is the reason we had to introduce the member function listed above.
+
+In order to build~\texttt{system\_matrix}, we iterate through the mesh cells (as standard in finite element codes and deal.II in particular). The structure essentially repeats Listing~\ref{lst:mfreepar} structure. We refer to Section~\ref{sec:source} for the full source code. 
 
 \section{Computational experiments}
 In this report we consider the following problem, let $\Omega = [0, 1]^{dim}$ be the unit cube with triangulation $\{\tau_{h}\}$.
@@ -363,6 +384,13 @@ For our experiments we varied $r$, $dim$, $K$, and the number of threads used $p
 
 \subsection{Summary}
 
+\section{Source code}\label{sec:source}
+
+The source code is available on github:~\url{https://github.com/elykwilliams/MatrixFree-FEM}
+
+\lstinputlisting[caption={MatrixFree.h}]{../MatrixFree.h}
+
+\lstinputlisting[caption={main.cc}]{../main.cc}
 
 \bibliographystyle{plain}
 \bibliography{bibl}
