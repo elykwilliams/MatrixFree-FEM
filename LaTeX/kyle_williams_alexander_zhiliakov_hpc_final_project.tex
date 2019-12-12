@@ -324,7 +324,7 @@ We compared our implementation of the matrix-vector product using CRS format, an
 
 For our experiments we varied $r$, $dim$, $K$, and the number of threads used $p$. We used perf to measure the number of cycles, instructions, cache references, and cache misses, as well as total run time. We also used omp\_get\_wtime() to specifically measure the time of the matrix-vector multiplication alone. In context, varying $r$ corresponds to increasing the number of cells; and increasing $dim$ and $K$ both increase the number of dofs per cell. We also used RAPL to compute the power draw on the processors.
 
-We ran all these tests on the Stampede2 clusters using Intel Xeon Platinum 8160 ("Skylake") 2.1GHz processor. We did utilize hyper threading on up to three nodes with two sockets per node. We set OMP\_PROC\_BIND=close.
+We ran all these tests on the Stampede2 clusters using Intel Xeon Platinum 8160 ("Skylake") 2.1GHz processor. We did utilize hyper threading on up to three nodes with two sockets per node. We set OMP\_PROC\_BIND=close for thread allocation.
 
 \subsection{Results}
 In the following figures, we use fixed value of $K = 3$ and $dim = 3$. The different refinement levels led to matrices of dimension $N =$ 2\,197, 15\,625, 117\,649, and 912\,673. With these values of $N, K, dim$ the sparse matrix will have 256 non-zero entries per row, with the total size of the CRS matrix data being 1.81, 14.17, 111.98, 890.27 MB. As far as the matrix-free method is concerned, the local matrix will have a dimension of 64x64 for a size of 32.77 KB per thread; the corresponding number of cells was 64, 512, 4\,096, 32\,768. We only present results for thread numbers up to 96 threads for reasons discussed in the analysis.
@@ -353,19 +353,26 @@ In the following figures, we use fixed value of $K = 3$ and $dim = 3$. The diffe
 	\begin{subfigure}{.5\linewidth}
 		\includegraphicsw{inst.pdf}
 	\end{subfigure}
-	\caption{Cache miss ratio (left) and instructions per cycle (right) for the largest matrix size~$n = 912\,673$}
+	\caption{Cache miss ratio (left) and instructions per cycle (right) for the largest matrix size~$n = 912\,673$}\label{fig:cache}
 \end{figure}
 
 \begin{table}[H]
-	\centering\caption{Energy consumption for a single thread; TDP = 150\,W}
+	\centering\caption{Energy consumption for a single thread; TDP = 150\,W}\label{fig:rapl}
 	\includegraphicsw[.9]{rapl.pdf}
 \end{table}
 
 \subsection{Analysis}
+In figure \ref{fig:time}, we see that performance of the crs multiplcation does not seem to be correlated with the number of threads since we see that 48 threads preforms better that 96. With the matrix-free multiplication does seem to see continual improvement with the number of threads, the there seem to be diminishing returns on increasing the number of threads. We believe this is due to the use of the atomic command at the end of each cell operation, with more threads there is a greater wait time for each thread to write to the global resultant vector. This could be avoided if a coloring scheme was applied to allow multiple threads to write at once. It is also observed that more threads show quite poor performance for a relatively small number of dofs, there will be a very small amount of work per thread with each thread having to wait for others giving very little speedup over a serial run. In any case, we still see that the matrix-free out preforms much better than the crs implementation requiring roughly 50\% the time for large matrices, as expected.
+
+In figure \ref{fig:cache}, we see that we do indeed see an improvement in cache-misses as well as better scaling with respect to the number of threads, one of the major goals of this project. Though we were not able to compute the number of FLOPs per second directly, we use the number of instructions per cycle as a proxy, to infer that we do generally see an improvment in performance with respect to the number of threads for the matrix-free and clearly see that the crs multiplication achieves a maximum at 48 threads. For this reason, we do not expect that our program is memory bounded and the syncronization problems discussed above seve as the major bottleneck for the matrix-free implementation. 
+
+Though there is not a significant difference in the power draw, we see that the matrix-free generally draws more power from the CPU and less power from the DRAM; this indicates that it is in fact not using the RAM as much, and is more reliant on the CPU. 
 
 \section{Summary}
 
-\subsection{Random Issues we ran in to}
+% improvements
+
+% random problems
 
 
 
