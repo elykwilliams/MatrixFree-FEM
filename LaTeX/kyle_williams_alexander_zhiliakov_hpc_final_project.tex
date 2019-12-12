@@ -94,7 +94,7 @@
 \usepackage[bottom]{footmisc}
 \newcommand{\AZ}[1]{{\color{red}\textbf{AZ}:~#1}}
 \newcommand{\KW}[1]{{\color{blue}\textbf{KW}:~#1}}
-\newcommand{\dimSize}{n}
+\newcommand{\dimSize}{N}
 
 \title{COSC\,6365 -- Introduction to High Performance Computing, Fall 2019\\Final project: \textbf{Matrix-free finite element method}}
 \author{
@@ -115,46 +115,68 @@
 
 \section{Theoretical background}
 
-\subsection{Finite element method}
-The Finite Element Method is a general method for solving partial differential equations. So we begin with a partial differential equation
-\[
+\subsection{Finite element method}\label{sec:fem}
+The finite element method is a general method for solving partial differential equations~\cite{smth}. So we begin with an abstract partial differential equation
+\begin{equation}\label{pde}
 \begin{cases} 
 	\text{Find } u \in V(\Omega) \text{ such that } \\
 	\langle \mathcal{L}u, v \rangle = \langle f, v \rangle \; \forall v \in V(\Omega)
 \end{cases}
-\]
+\end{equation}
+written in a weak form. Here~$\Omega$ is the domain on which we wish to solve the differential equation~\eqref{pde}, and $V \equiv V(\Omega)$ is an appropriate vector space depending on the particular differential equation and boundary conditions in question. 
 
-Where $\Omega$ is the domain on which we wish to solve the differential equation, and $V$ is an appropriate vector space depending on the particular differential equation and boundary conditions in quesiton. Generally this vector space will be infinite dimensional and will require some sort of approximation if we wish to solve the problem numerically. In the finite element method, we use the Ritz-Galerkin approach to approximation. Instead of choosing an infinite dimensional vectorspace, we choose a finite dimensional subspace $V_{h}$ so the problem becomes
-\[
+Generally this vector space~$V$ will be infinite dimensional and will require some sort of approximation if we wish to solve the problem numerically. In the finite element method, we use the Ritz-Galerkin approach to approximation: Instead of choosing an infinite dimensional vector 
+space, we choose a finite dimensional subspace~$V_{h}$, so the problem becomes
+\begin{equation}\label{finite}
 \begin{cases} 
-	\text{Find } u_{h} \in V_{h}(\Omega) \text{ such that } \\
-	\langle \mathcal{L}u_{h}, v_{h} \rangle = \langle f, v_{h} \rangle \; \forall v_{h} \in V_{h}(\Omega)
+	\text{Find } u_{h} \in V_{h} \text{ such that } \\
+	\langle \mathcal{L}u_{h}, v_{h} \rangle = \langle f, v_{h} \rangle \; \forall v_{h} \in V_{h}.
 \end{cases}
-\]
-Since $V_{h}$ is a finite dimensional, we case choose basis functions for the vector space $\varphi_{i} \; i = 1, ..., N$, with this we can represent $u_{h} = \sum_{i = 1}^{N} U_{i}\varphi_{i}$, additionally we only need to test that the equallity holds for each basis function which leads to
+\end{equation}
+Since $V_{h}$ is a finite dimensional, we can choose some basis functions~$\vect\phi \coloneqq \{\varphi_1, \varphi_2, \dots, \varphi_\dimSize\}$ spanning~$V_h$, and with this we can represent $u_{h} = \sum_{i = 1}^{\dimSize} U_{i}\varphi_{i}$. Note that we only need to test that the equality~\eqref{finite} holds for each basis function, i.e.~\eqref{finite} is equivalent to
+\begin{equation}\label{fem}
+\begin{cases} 
+	\text{Find } U \in \mathbb{R}^{\dimSize} \text{ such that } \\
+	\sum_{i = 1}^{\dimSize}\langle \mathcal{L}U_{i}\varphi_{i}, \varphi_{j} \rangle = \langle f, \varphi_{j} \rangle \; \forall j = 1, \ldots,\dimSize.
+\end{cases}
+\end{equation}
+If the differential equation~\eqref{pde} is linear, then~\eqref{fem} becomes a linear system
 \[
 \begin{cases} 
 	\text{Find } U \in \mathbb{R}^{N} \text{ such that } \\
-	\sum_{i = 1}^{N}\langle \mathcal{L}U_{i}\varphi_{i}, \varphi_{j} \rangle = \langle f, \varphi_{j} \rangle \; \forall j = 1, \ldots, N
+	\sum_{i = 1}^{N}\langle \mathcal{L}\varphi_{i}, \varphi_{j} \rangle U_{i} = \langle f, \varphi_{j} \rangle \; \forall j = 1, \ldots,\dimSize,
 \end{cases}
 \]
-If the differential equation is linear this becomes a linear system
-\[
-\begin{cases} 
-	\text{Find } U \in \mathbb{R}^{N} \text{ such that } \\
-	\sum_{i = 1}^{N}\langle \mathcal{L}\varphi_{i}, \varphi_{j} \rangle U_{i} = \langle f, \varphi_{j} \rangle \; \forall j = 1, \ldots, N
-\end{cases}
-\]
-We can represent this linear system with $\mathbf{A}_{i,j} = \langle \mathcal{L}\varphi_{i}, \varphi_{j} \rangle,\; x_{i} = U_{i}$ and $\mathbf{b}_{i} = \langle f, \varphi_{i} \rangle$ for the right hand side. The finite element method is a method for choosing these basis functions in such a way that the resulting system will have certain specified properties, e.g. $\mathbf{A}$ is sparse.
+or
+\begin{equation}\label{system}
+	\vect A\,\vect x = \vect b
+\end{equation}
+with $\mathbf{A}_{i,j} = \langle \mathcal{L}\varphi_{i}, \varphi_{j} \rangle,\; \vect x_{i} = U_{i}$, and $\mathbf{b}_{i} = \langle f, \varphi_{i} \rangle$ for the right hand side. The \textit{finite element method} is a method for choosing these basis functions in such a way that the resulting system will have certain specified properties, e.g. one may require~$\mathbf{A}$ to be sparse, reasonably well-conditioned etc.
 
-In the finite element method to choose these basis functions, we first take the domain $\Omega$ and triangulate it into a collection of polyhedral or quadralateral cells (or elements). On each of these cells, we assign a set of points $p$ called degrees of freedom (dofs); the basis functions are then chosen so that $\varphi_{i}(p_{j}) = \delta_{i}^{j}$. This will have the effect of each basis function being a polynomial of degree $k$ where $k$ is the number of degrees of freedom per cell.
+In the finite element method to choose the basis~$\vect\phi$, we first take the domain $\Omega$ and build its discrete representation~$\Omega_h$: We triangulate~$\Omega$ into a collection of polyhedral cells (or elements), typically tetrahedrons of hexahedrons. See Figure~\ref{fig:mesh}.
 
-With this particualar choice, for cells that do not contain, say, the dof $p_{m}$, the corresponding basis function $\varphi_{m}$ will also be zero. This means that $\langle \mathcal{L}\varphi_{i}, \varphi_{m}\rangle = 0$ for any $i$ where $p_{i}$ is not contained in the same cell as $p_{m}$. More on this in \ref{Sparsity}
+%One usually builds the basis~$\vect\phi$ using a concept of \textit{finite element}, see~\cite{ciarlet2002finite}. Roughly speaking, the finite element is a collection of 3 entities: Cell (typically a convex polygon in 2D or polyhedron 3D), finite dimensional space of shape functions~$S$ defined on this cell (typically polynomials of some degree~$k$), and the set of degrees of freedom (d.o.f.) for these shape functions (e.g. nodal values, mean values over edges or faces, normal or tangential components etc.) Given finite element, one then constructs a basis in~$S$ via associating a shape function with a d.o.f.: One fixes one degree of freedom to be unity and all the other d.o.f. to be zero for this shape function. 
+%
+%When the finite element is chosen, one constructs a trace (on a given cell) of the basis function~${\phi \in \vect\phi}$ from cell's shape function. This way it is guaranteed that each basis function has a compact support. See Figure~\AZ{Add.}
+
+On each cell of~$\Omega_h$ we assign a set of points $p$ called degrees of freedom (d.o.f.); The basis functions are then chosen so that $\varphi_{i}(p_{j}) = \delta_{i}^{j}$, i.e. $i$th basis function is unity on its associated d.o.f. and is zero on all the other d.o.f. This will have the effect of each basis function being a polynomial of degree $k$ with $k$ being the number of d.o.f. per cell.
+
+%In this report we stick to \textit{Lagrange} (this means that degrees of freedom are chosen to be nodal values) finite elements of polynomial degree~$k > 1$ defined on hexahedron elements. \AZ{Add quad elements too?} As we will see below, theoretically the matrix-free approach becomes more and more beneficial as one increases~$k$, i.e. for higher-order elements. 
+
+\begin{figure}[H]
+	\centering
+	\includegraphicsw[.4]{mesh.png}
+	\caption{Triangulation~$\Omega_h$ of the unit cube domain~$\Omega = (0, 1)^{3}$ consisting of hexahedral cells}\label{fig:mesh}
+\end{figure}
+
+With this particular choice, for cells that do not contain, say, the d.o.f. $p_{m}$, the corresponding basis function $\varphi_{m}$ will also be zero. This means that $\langle \mathcal{L}\varphi_{i}, \varphi_{m}\rangle = 0$ for any $i$ where $p_{i}$ is not contained in the same cell as $p_{m}$. More on this in \ref{Sparsity}
 
 In almost all applications, we use that 
-$\langle \mathcal{L}\varphi_{i}, \varphi_{j}\rangle = \int_{\Omega}\mathcal{L}\varphi_{i}\, \varphi_{j}dx $. This makes assembly of the global system much simpler because we can write the integral as a sum over the cells $ \int_{\Omega}\mathcal{L}\varphi_{i}, \varphi_{j}dx = \sum_{\tau} \int_{\tau}\mathcal{L}\varphi_{i}\, \varphi_{j}dx $. With this we now have what is called the cell (local) matrix 
-$$ \mathbf{A}^{cell}_{i,j} = \int_{\tau}\mathcal{L}\varphi_{i}\, \varphi_{j}dx\quad i, j = 1, \ldots k $$ 
-again $k$ is the number of degrees of freedom per cell. In computing these local matrices, we then distribute them to the global matrix $ \mathbf{A} = \sum_{\tau}P^{T}_{\tau}\mathbf{A}^{cell}P_{\tau} $. Where $P_{tau}$ accounts for the mapping of global indices to local indices. Now the matrix assembly process is done cellwise to compute the cell matrix, then distributed to the global matrix. 
+$\langle \mathcal{L}\varphi_{i}, \varphi_{j}\rangle = \int_{\Omega}\mathcal{L}\varphi_{i}\, \varphi_{j}dx $. This makes assembly of the global system much simpler because we can write the integral as a sum over the cells $ \int_{\Omega}\mathcal{L}\varphi_{i}, \varphi_{j}dx = \sum_{\tau\in\Omega_h} \int_{\tau}\mathcal{L}\varphi_{i}\, \varphi_{j}dx $. With this we now have what is called the cell (local) matrix 
+$$ 
+	\mathbf{A}^{cell}_{i,j} = \int_{\tau}\mathcal{L}\varphi_{i}\, \varphi_{j}dx\quad i, j = 1, \ldots k,
+$$ 
+with $k$ again being the number of degrees of freedom per cell. In computing these local matrices, we then distribute them to the global matrix $ \mathbf{A} = \sum_{\tau}P^{T}_{\tau}\mathbf{A}^{cell}P_{\tau} $. Where $P_{tau}$ accounts for the mapping of global indices to local indices. The matrix assembly process is done cell-wise to compute the cell matrices that are then distributed to the global matrix~$\vect A$. 
 
 One aspect that can make the local assembly process simpler is to assign the dofs to a reference cell and then use a change of coordinates to write the cell integral as an integral over the reference cell. This simply requires that we use the jacobian of the transformation to transform operations from the cell to the reference cell.
 
@@ -164,20 +186,12 @@ This description of the finite element method has highlighted key features, cell
 
 \KW{Add citations}
 
-
 \subsection{Sparse matrix-vector multiplication}
 
 \KW{Discuss number of dofs per row, CSR format, bottleneck in assembly and bottleneck in Vmult. Stick to sparse matix only, find citation?} 
 \AZ{Talk about sparsity of the system and typical operation required (MV) for iterative solvers, emphasize problems related to memory bandwidth}
 
-
-One usually builds the basis~\eqref{basis} using a concept of \textit{finite element}, see~\cite{ciarlet2002finite}. Roughly speaking, the finite element is a collection of 3 entities: cell (typically a convex polygon in 2D or polyhedron 3D), finite dimensional space of shape functions~$S$ defined on this cell (typically polynomials of some degree~$k$), and the set of degrees of freedom for these shape functions (e.g. nodal values, mean values over edges or faces, normal or tangential components etc.) Given finite element, one then constructs a basis in~$S$ via associating a shape function with a degree of freedom: One fixes one degree of freedom to be unity and all the others to be zero for this shape function. 
-
-When the finite element is chosen, one constructs a trace (on a given cell) of the basis function~${\phi \in \vect\phi}$ from cell's shape function. This way it is guaranteed that each basis function has a compact support. See Figure~\AZ{Add.}
-
-In this report we stick to \textit{Lagrange} (this means that degrees of freedom are chosen to be nodal values) finite elements of polynomial degree~$k > 1$ defined on hexahedron elements. \AZ{Add quad elements too?} As we will see below, theoretically the matrix-free approach becomes more and more beneficial as one increases~$k$, i.e. for higher-order elements. 
-
-A matrix $\vect B \in \mathbb R^{\dimSize\times\dimSize}$ is called \textit{sparse} iff $\sum_{i,\,j} \mbox{sign}\,b_{ij} = O(\dimSize)$ as $\dimSize \rightarrow \infty$, i.e. most of the elements are zero and need not to be stored. This way memory requirements are $O(\dimSize)$ vs. $\dimSize^2$ as in dense case. \textbf{Given some requirements on the mesh and the finite element definition, we have that our system matrix~$\vect A$ in~\eqref{system} is sparse.} \AZ{Add an example for P1 elements.}
+A matrix $\vect B \in \mathbb R^{\dimSize\times\dimSize}$ is called \textit{sparse} iff $\sum_{i,\,j} \mbox{sign}\,b_{ij} = O(\dimSize)$ as $\dimSize \rightarrow \infty$, i.e. most of the elements are zero and need not to be stored. This way memory requirements are $O(\dimSize)$ vs. $\dimSize^2$ as in dense case. Given some requirements on the mesh~$\Omega_h$ and the choice of~$\vect\phi$ as explained in Section~\ref{sec:fem}, we have that our system matrix~$\vect A$ in~\eqref{system} is sparse.
 
 For big complex problems, especially in 3D, it is typical to use an iterative solver to solve~\eqref{system}. The problem may combine different variables (scalar and vector) and couple different physics (e.g. electromagnetics and fluid flow, fluid-structure interaction and so forth); In this case one would typically equip the iterative solver with an appropriate preconditioner (which may be rather complex) that takes the structure of the underline problem into account. In any case, both the solver and the application of the preconditioner are usually based on one core operation: \textbf{Matrix-vector multiplication}.
 
