@@ -103,6 +103,8 @@
 	Alexander Zhiliakov\thanks{Department of Mathematics, University of Houston, Houston, Texas 77204 (alex@math.uh.edu).}
 }
 
+\usepackage[nottoc,notlot,notlof]{tocbibind}
+
 \begin{document}
 	
 \maketitle
@@ -168,9 +170,9 @@ On each cell of~$\Omega_h$ we assign a set of points $p$ called degrees of freed
 	\caption{Triangulation~$\Omega_h$ of the unit cube domain~$\Omega = (0, 1)^{3}$ consisting of hexahedral cells}\label{fig:mesh}
 \end{figure}
 
-With this particular choice, for cells that do not contain, say, the d.o.f. $p_{m}$, the corresponding basis function $\varphi_{m}$ will also be zero. This means that $\langle \mathcal{L}\varphi_{i}, \varphi_{m}\rangle = 0$ for any $i$ where $p_{i}$ is not contained in the same cell as $p_{m}$. More on this is in Section~\ref{sec:crs}.
+With this particular choice, for cells that do not contain, say, the d.o.f. $p_{m}$, the corresponding basis function $\varphi_{m}$ will also be zero. This means that $\langle \mathcal{L}\varphi_{i}, \varphi_{m}\rangle = 0$ for any $i$ where $p_{i}$ is not contained in the same cell as $p_{m}$. More on this is in Section~\ref{sec:CSR}.
 
-In this report we stick to \textit{Lagrange} (this means that d.o.f. are chosen to be nodal values) finite elements of polynomial degree~$K > 1$ defined on hexahedron elements, i.e. basis function $\phi_i \in \vect\phi$ is a piecewise polynomial that is nonzero only in cells sharing vertex~$i$ of~$\Omega_h$. As we will see in Section~\ref{sec:mfree}, theoretically the matrix-free approach becomes more and more beneficial as one increases~$K$, i.e. for higher-order elements. 
+In this report we stick to \textit{Lagrange} (this means that d.o.f. are chosen to be nodal values) finite elements of polynomial degree~$K > 1$ defined on hexahedron elements, i.e. basis function $\varphi_i \in \vect\phi$ is a piecewise polynomial that is nonzero only in cells sharing vertex~$i$ of~$\Omega_h$. As we will see in Section~\ref{sec:mfree}, theoretically the matrix-free approach becomes more and more beneficial as one increases~$K$, i.e. for higher-order elements. 
 
 In almost all applications, we use that 
 $\langle \mathcal{L}\varphi_{i}, \varphi_{j}\rangle = \int_{\Omega}\mathcal{L}\varphi_{i}\, \varphi_{j}dx $. This makes assembly of the global system~\eqref{system} much simpler because we can write the integral as a sum over the cells $ \int_{\Omega}\mathcal{L}\varphi_{i}, \varphi_{j}dx = \sum_{\tau\in\Omega_h} \int_{\tau}\mathcal{L}\varphi_{i}\, \varphi_{j}dx $. With this we now have what is called the cell (local) matrix 
@@ -183,11 +185,9 @@ One aspect that can make the local assembly process simpler is to assign the dof
 
 Once the matrix is assembled the linear system is then typically solved using an iterative method such as GMRES or Conjugate Gradient method. These methods are prefered due to only requiring matrix multiplications since when $\mathbf{A}$ is sparse, then the the complexity of a matrix-vector multiplication is only $O(n)$. 
 
-This description of the finite element method has highlighted key features, cell wise matrix assembly, and iterative linear solvers. As will be discussed below, these are the two key bottle necks that limit performance in most finite element codes which this project aims to address. 
+This description of the finite element method has highlighted two key features: cell-wise matrix assembly and iterative linear solvers. As will be discussed below, these are the two key bottle necks that limit performance in most finite element codes which this project aims to address.
 
-\KW{Add citations}
-
-\subsection{Sparse matrix-vector multiplication}\label{sec:crs}
+\subsection{Sparse matrix-vector multiplication}\label{sec:CSR}
 
 A matrix $\vect B \in \mathbb R^{\dimSize\times\dimSize}$ is called \textit{sparse} iff $\sum_{i,\,j} \mbox{sign}\,\vect B_{i,j} = O(\dimSize)$ as $\dimSize \rightarrow \infty$, i.e. most of the elements are zero and need not to be stored. This way memory requirements are $O(\dimSize)$ vs. $\dimSize^2$ as in dense case. Given some requirements on the mesh~$\Omega_h$ and the choice of~$\vect\phi$ as explained in Section~\ref{sec:fem}, we have that our system matrix~$\vect A$ in~\eqref{system} is sparse, see Figure~\ref{fig:sparse}.
 
@@ -217,8 +217,8 @@ Here the sparse matrix~$\vect A$ is represented with 3 vectors:
 
 CSR is optimal in the sense that both storage and multiplication require~$O(n)$ resources. However, one may note two major issues of the CSR multiplication implementation in Listing~\ref{lst:csrmv}:
 \begin{enumerate}
-	\item there is no spatial locality for~$\vect x$, and
-	\item there are 5 memory refs vs. 2 arithmetic operations, i.e. the routine is memory bandwidth bounded.
+	\item There is no spatial locality for~$\vect x$
+	\item There are 5 memory refs vs. 2 arithmetic operations, i.e. the routine is memory bandwidth bounded.
 \end{enumerate}
 Moreover, the assembly of~$\vect A$ itself is a problem, for it requires explicit computation of the matrix elements (or elements of cell matrices). The alternative approach for implementing~\eqref{mv} that tries to deal with these issues is described in the next section.
 
@@ -226,7 +226,7 @@ Moreover, the assembly of~$\vect A$ itself is a problem, for it requires explici
 
 In consideration of the bottlenecks and drawbacks presented above, there has been much research in how to avoid them; one such approach is known as the Matrix-Free finite element method. This method has technically been known for a long time~\cite{carey1988element}, it has only recently become popular with the advent of GPGPU computing~\cite{step37}. 
 
-The idea of the matrix-free fem is to avoid memory-related bottlenecks by avoiding computation fo the global matrix all together. And taking advantage of the cell-based assembly structe of the system. 
+The idea of the matrix-free FEM is to avoid memory-related bottlenecks by avoiding computation fo the global matrix all together and take advantage of the cell-based assembly structure of the system. 
 
 We begin with the cell based decomposition~$\mathbf{A} = \sum_{\tau}\vect P^{T}_{\tau}\mathbf{A}^{cell}\vect P_{\tau} $. We note that each row and column in the global matrix correspond to a single dof. Now we compute the matrix-vector product
 \begin{align*}
@@ -239,33 +239,33 @@ Here $\vect x_{cell} \in \mathbb{R}^{k}$ is a vector of values at the degrees of
 \mathbf{A}\vect x &= \sum_{\tau}\vect P^{T}_{\tau}\vect y_{cell} \\
 				&= \sum_{\tau} \vect y_{\tau}
 \end{align*}
-Now $\vect y_{\tau} \in \mathbb{R}^{N}$ is the vector with entries corresponding to contributions to the result from the given cell $\tau$. In practice, this can be done in one of two ways. One approach is to have distribute cells to various processors and have the processors compute the contribution from the locally owned cells and then to do a distributed reduction to gather the result into a single vector; this is method is what is typically used when using a distributed parallelization model such as MPI. The other approach is to assign each cell to a process and have the process compute the contributions from that cell and place the result directly into the resultant vector since the index mapping is known; this approach is more suitable for a shared memory approch such as OpenMP or Cuda OpenACC. It is also possible to combine the two approaches when using a MPI + X parallelization model. In this project we use the approach of assigning each cell to a thread using OpenMP, more in \ref{implementation }. For the remainder of this report we use be discussing the method using the OpenMp approach unless otherwise specified.
+Now $\vect y_{\tau} \in \mathbb{R}^{N}$ is the vector with entries corresponding to contributions to the result from the given cell $\tau$. In practice, this can be done in one of two ways. One approach is to have distribute cells to various processors and have the processors compute the contribution from the locally owned cells and then to do a distributed reduction to gather the result into a single vector; this is method is what is typically used when using a distributed parallelization model such as MPI. The other approach is to assign each cell to a process and have the process compute the contributions from that cell and place the result directly into the resultant vector since the index mapping is known; this approach is more suitable for a shared memory approch such as OpenMP or Cuda\,/\,OpenACC. It is also possible to combine the two approaches when using a MPI + X parallelization model. In this project we use the approach of assigning each cell to a thread using OpenMP, more in Section~\ref{sec:impl}. For the remainder of this report we will be discussing the method using the OpenMP approach unless otherwise specified.
 
-It is important to note that there are no approximations being made and that the result of a standard matrix-vector multiplication and application of this matrix-free approach will give the exact same result. The only difference is that for the matrix-free approach we compute the cell matrices ``on the fly'' as needed; as opposed to precomputing them and storing them in a global matrix. This will obviously require a significantly larger number of flops, however the goal is to have a method that is cpu bounded and scales well as the number of processes is scaled up. The matrix free method ideally avoids memory speed limitations by not needing to access a global matrix at all. These benefits should become more visible as the matrix size become large and as the number of degrees of freedom per cell increases as well. For 2D problems with only a few degrees of freedom per cell the method is not expected to be as competitive due to the overhead associated with each cell. 
+It is important to note that there are no approximations being made and that the result of a standard matrix-vector multiplication and application of this matrix-free approach will give the exact same result. The only difference is that for the matrix-free approach we compute the cell matrices ``on the fly'' as needed; as opposed to precomputing them and storing them in a global matrix. This will obviously require a significantly larger number of FLOPs, however the goal is to have a method that is CPU bounded and scales well as the number of processes is scaled up. The matrix free method ideally avoids memory speed limitations by not needing to access a global matrix at all. These benefits should become more visible as the matrix size become large and as the number of degrees of freedom per cell increases as well. For 2D problems with only a few degrees of freedom per cell the method is not expected to be as competitive due to the overhead associated with each cell. 
 
 With the consideration that there will be a large overhead in computing the local matrix-vector product, there are a few optimizations that can be made. If for example we have that 
 $$\mathbf{A}^{cell}_{i,j} = \int_{\tau}\nabla \alpha(x) \varphi_{i}(x) \cdot \nabla \varphi_{j}(x) dx\quad i,j = 1 \ldots \dofspercell$$ 
 then we can do a change of coordinates to a reference cell
 $$
-	\mathbf{A}^{cell}_{i,j} = \int_{ref} \alpha(T(\hat{x})) (J^{-T}\nabla \varphi_{i}^{ref}(\hat{x})) \cdot (J^{-T}\nabla \varphi_{j}^{ref}(\hat{x}))\,\vert \mathrm{det}J(x) \vert d\hat{x} \quad i,j = 1 \ldots \dofspercell.
+	\mathbf{A}^{cell}_{i,j} = \int_{ref} \alpha(T(\hat{x})) (J^{-T}\nabla \varphi_{i}^{ref}(\hat{x})) \cdot (J^{-T}\nabla \varphi_{j}^{ref}(\hat{x}))\,\vert \mathrm{det}J(\hat x) \vert d\hat{x} \quad i,j = 1 \ldots \dofspercell.
 $$ 
 This can then be rewritten as 
 \begin{equation}\label{decomp}
 	\mathbf{A}^{cell} = \vect B^{T}_{ref}\,\vect J^{-1}_{cell}\,\vect D_{cell}\,\vect J^{-T}_{cell}\,\vect B_{ref}
 \end{equation}
-Where $\vect B_{ref}$ is a matrix of values of the gradient on the reference cell at each quadrature point, $\vect J$ is the Jacobian matrix of the transformation~$T$ from the reference cell to the physical cell~$\tau\in\Omega_h$, and $\vect D$ is a diagonal matrix with values of $\alpha(T(\hat{x}))\, \vert \mathrm{det}\vect J(\hat{x}) \vert$ along the diagonal. This is beneficial because the  values of $\vect B^{T}$ are the same for each cell and can be precomputed.
+Where $\vect B_{ref}$ is a matrix of values of the gradient on the reference cell at each quadrature point, $\vect J$ is the Jacobian matrix of the transformation~$T$ from the reference cell to the physical cell~$\tau\in\Omega_h$, and $\vect D$ is a diagonal matrix with values of $\alpha(T(\hat{x}))\, \vert \mathrm{det}\vect J(\hat{x}) \vert$ along the diagonal. This is beneficial because the  values of $\vect B^{T}$ are the same for each cell and can be precomputed and shared.
 
-Note that if we were building a global matrix, this matrix product would need to be computed in order to distribute it to the global matrix. This grows more time consuming as the number dofs per cell grows, or as the number of integration points grows (typically the number of quadrature points is dependent on the number of $\dofspercell$. However, if we simply need to evaluate $\vect A^{cell}\vect x_{cell}$, we can use the decomposition to compute a series of matrix-vector products instead of having to multiply all of these matrices together. This reduces has the benefit of reducing the complexity of the work done per cell. This has the effect of reducing the complexity per cell from $O(\dofspercell^{dim})$ to $O(\dofspercell)$; so we can expect that the matrix-free approach will be more competitive as the number of $\dofspercell$ grows.
+Note that if we were building a global matrix, this matrix product would need to be (implicitly) computed in order to distribute it to the global matrix. This grows more time consuming as the number dofs per cell grows, or as the number of integration points grows (typically the number of quadrature points is dependent on~$\dofspercell$). However, if we simply need to evaluate $\vect A^{cell}\vect x_{cell}$, we can use the decomposition to compute a series of matrix-vector products instead of having to multiply all of these matrices together. This has the benefit of reducing work per cell by reducing the complexity per cell from $O(\dofspercell^{dim})$ to $O(\dofspercell)$; so we can expect that the matrix-free approach will be more competitive as~$\dofspercell$ grows.
 
 
-\section{Implementation details}
+\section{Implementation details}\label{sec:impl}
 
-For this project we used the deal.II finite element library~\cite{dealII91} to handle the domain triangulation, dof enumeration, and the local to global index mapping. The two matrix multiplication methods were both implemented manually. The deal.II library has a tutorial on how to use their builtin matrix-free method; as well as a description of how the method is implemented internally. We used this description with modifications to implement our methods. In particular, the deal.II matrix-free builtin methods are designed around an MPI based parallelization, see~\cite{step37}; whereas we intended to use OpenMP based parallelization. We tested our implementation against deal.II's builtin matrix-vector multiplication to ensure that they were in fact the same.
+For this project we used the deal.II finite element library~\cite{dealII91} to handle the domain triangulation, dof enumeration, and the local to global index mapping. The two matrix multiplication methods were both implemented manually. The deal.II library has a tutorial on how to use their builtin matrix-free method; as well as a description of how the method is implemented internally. We used this description with modifications to implement our methods. In particular, the deal.II matrix-free builtin methods are designed around an MPI based parallelization, see~\cite{step37}; whereas we intended to use OpenMP based parallelization. We tested our implementation against deal.II's builtin matrix-vector multiplication to ensure that they give consistent output.
 
 \subsection{Matrix-free}
-In this section we discuss the matrix-free vmult function that will take an input vector and compute the product $\vect A\vect x$. In our implementation, this is a class member so a number of variables relating to the referece cell have been precomputing in construction of the class.
+In this section we discuss the matrix-free vmult function that will take an input vector and compute the product $\vect A\vect x$. In our implementation, this is a class member, so a number of variables relating to the reference cell have been precomputing in construction of the class.
 
-Using the description above, we being with a loop over each cell. On each cell, we use a single thread to generate an omp task to compute the contributions from each cell then wait for each task to complete before returning from the funciton. This taskwait is important so that the cell iterator does not go out of scope before a task has completed. 
+Using the description above, we begin with a loop over each cell. On each cell, we use a single thread to generate an omp task to compute the contributions from that cell, then wait for each task to complete before returning from the function. This taskwait is important so that the cell iterator does not go out of scope before a task has completed. 
 \begin{lstlisting}[caption={Matrix-free cell parallelization},,captionpos=b,label={lst:mfreepar}]
 #pragma omp parallel
 #pragma omp single
@@ -293,7 +293,7 @@ Then for each cell we do the following
 	for (unsigned int i = 0; i<dofs_per_cell; ++i)
 			cell_vec(i) = src(local_to_global[i]);
 \end{lstlisting}
-\item Apply $\vect B_{ref}$ to the vector; apply $\vect J^{-T}_{cell}$ to the result of previous multiplication; \dots ; apply $\vect B^{T}_{ref}$ to the result of previous multiplication, cf.~\eqref{decomp}
+\item Apply $\vect B_{ref}$ to the cell vector; apply $\vect J^{-T}_{cell}$ to the result of previous multiplication; \dots ; apply $\vect B^{T}_{ref}$ to the result of previous multiplication, cf.~\eqref{decomp}
 \item Distribute local result to global result vector
 \begin{lstlisting}
 for(unsigned int i=0; i<dofs_per_cell; i++){
@@ -302,12 +302,12 @@ for(unsigned int i=0; i<dofs_per_cell; i++){
 }
 \end{lstlisting}
 \end{enumerate}
-We have to use atomic to avoid race conditions in accessing the shared global result. This could be avoided in two ways, one is to apply a coloring scheme to each cell so that no task accesses the same dof at the same time, or each thread could have a private global vector and then would to a reduction to merge them all together. We did not choose the later approach since it would create a very large memory footprint per thread. And in the former case, was outside the scope of our project.
+We have to use atomic to avoid race conditions in accessing the shared global result. This could be avoided in two ways, one is to apply a coloring scheme to each cell so that no task accesses the same dof at the same time, or each thread could have a private global vector and then would do a reduction to merge them all together. We did not choose the later approach since it would create a large memory footprint per thread. And in the former case, was outside the scope of our project.
 
 \subsection{Explicit sparse matrix construction}
 
 \texttt{Vmult} member function for CSR implementation takes the following form: 
-\begin{lstlisting}[caption={CRS matrix multiplication with row-wise parallelization},captionpos=b]
+\begin{lstlisting}[caption={CSR matrix multiplication with row-wise parallelization},captionpos=b]
 void Vmult(const Vector<double> &src, Vector<double> &dst) const override {
 dst = 0.;
 #pragma omp parallel for
@@ -324,32 +324,32 @@ constraints.distribute(dst);
 
 This is essentially implementation of Listing~\ref{lst:csrmv} that uses deal.II's interface for somewhat low-level access to~\texttt{system\_matrix} object through its sparsity pattern. Note that~\texttt{system\_matrix} itself has a method for multiplication, however, it does not use OpenMP; this is the reason we had to introduce the member function listed above.
 
-In order to build~\texttt{system\_matrix}, we iterate through the mesh cells (as standard in finite element codes and deal.II in particular). The structure essentially repeats Listing~\ref{lst:mfreepar} structure. We refer to Section~\ref{sec:source} for the full source code. 
+In order to build~\texttt{system\_matrix}, we iterate through the mesh cells (as standard in finite element codes and deal.II in particular). The structure essentially repeats Listing~\ref{lst:mfreepar}. We refer to Section~\ref{sec:source} for the full source code. 
 
 \section{Computational experiments}
-In this report we consider the following problem, let $\Omega = [0, 1]^{dim}$ be the unit cube with triangulation $\{\tau_{h}\}$.
+In this report we consider the following problem, let $\Omega = (0, 1)^{dim}$ be the unit cube with triangulation $\Omega_h = \{\tau_{h}\}$.
 \begin{align*}
-&\text{Find } u_{h} \in H^{1}(\Omega) \text{ such that: }  \\
+&\text{Find } u_{h} \in V_h \subset H^{1}(\Omega) \text{ such that: }  \\
 &\begin{cases}
-\int_{\Omega} \alpha(x) \nabla u_{h} \cdot \nabla v_{h} dx  = \int_{\Omega} f(x) v_{h} dx \; \forall v_{h} \in H^{1}(\Omega) \\
-\nabla u_{n} \cdot n = 0 \text{ on } \partial \Omega ,\qquad u_{h} \vert_{\tau} \in \mathbb{P}_{K}(\tau) 
+\int_{\Omega} \alpha(x) \nabla u_{h} \cdot \nabla v_{h} dx  = \int_{\Omega} f(x) v_{h} dx \; \forall v_{h} \in V_h \\
+\nabla u_{n} \cdot n = 0 \text{ on } \partial \Omega ,\qquad u_{h} \vert_{\tau_h} \in \mathbb{P}_{K}(\tau_h) 
 \end{cases}
 \end{align*}
-Where $\mathbb{P}_{k}(\tau) $ is the set of polynomials of at most degree $K$. We take $\alpha(x) = \frac{1}{0.05 + 2\vert \vert x \vert \vert^{2}}$. Since we are only interested in the speed of the matrix multiplications and do not actually solve the full differential equation, we do not need to specify $f$.
+Where $\mathbb{P}_{k}(\tau_h)$ is the set of polynomials of at most degree $K$. We take $\alpha(x) = \frac{1}{0.05 + 2\vert \vert x \vert \vert^{2}}$. Since we are only interested in the speed of the matrix multiplications and do not actually solve the full differential equation, we do not need to specify $f$.
 
-For the triangulation we use $r$ global refinements of the unit cube and randomly perturb the vertices so that there is no possibility of reuse of data between cells, see \ref{fig:mesh}. For the choice of finite elements, we choose polynomials of at most degree $K$, $\mathcal{Q}_{K}$; for integration we use a Gauss Quadrature of degree $K+1$. 
+For the triangulation we use $r$ global refinements of the unit cube and randomly perturb the vertices so that there is no possibility of reuse of data between cells, see Figure~\ref{fig:mesh}. For the choice of finite elements, we choose polynomials of at most degree $K$, $\mathcal{Q}_{K}$; for integration we use a Gauss Quadrature of degree $K+1$. 
 
-We compared our implementation of the matrix-vector product using CRS format, and the matrix-free version. The comparison was done by taking measurements on 5 sucessive applications of the matrix-vector multiplication.
+We compared our implementation of the matrix-vector product using CSR format and the matrix-free version. The comparison was done by taking measurements on 5 sucessive applications of the matrix-vector multiplication.
 
 For our experiments we varied $r$, $dim$, $K$, and the number of threads used $p$. We used perf to measure the number of cycles, instructions, cache references, and cache misses, as well as total run time. We also used omp\_get\_wtime() to specifically measure the time of the matrix-vector multiplication alone. In context, varying $r$ corresponds to increasing the number of cells; and increasing $dim$ and $K$ both increase the number of dofs per cell. We also used RAPL to compute the power draw on the processors.
 
 We ran all these tests on the Stampede2 clusters using Intel Xeon Platinum 8160 ("Skylake") 2.1GHz processor. We did utilize hyper threading on up to three nodes with two sockets per node. We set OMP\_PROC\_BIND=close for thread allocation.
 
-We also learned several limitation of profilers when trying to link with large libraries. TAU was unable to ever fully link with dealii, hpctoolkit took an extrodinarly long time to do any sort of profiling, perfexpert was unable to measure FLOPs, and gprof was unable to provide FLOPs as well. We attempted to use PAPI directly to measure FLOPS but were unsucessful in getting the counters to work properly.
+We also learned several limitation of profilers when trying to link with large libraries. TAU was unable to ever fully link with deal.II, hpctoolkit took an extrodinarly long time to do any sort of profiling, perfexpert was unable to measure FLOPs, and gprof was unable to provide FLOPs as well. We attempted to use PAPI directly to measure FLOPs but were unsucessful in getting the counters to work properly.~\includegraphics[width=12px]{clown.png}
 
 
 \subsection{Results}
-In the following figures, we use fixed value of $K = 3$ and $dim = 3$. The different refinement levels led to matrices of dimension $N =$ 2\,197, 15\,625, 117\,649, and 912\,673. With these values of $N, K, dim$ the sparse matrix will have 256 non-zero entries per row, with the total size of the CRS matrix data being 1.81, 14.17, 111.98, 890.27 MB. As far as the matrix-free method is concerned, the local matrix will have a dimension of 64x64 for a size of 32.77 KB per thread; the corresponding number of cells was 64, 512, 4\,096, 32\,768. We only present results for thread numbers up to 96 threads for reasons discussed in the analysis.
+In the following figures, we use fixed value of $K = 3$ and $dim = 3$. The different refinement levels led to matrices of dimension $N =$ 2\,197, 15\,625, 117\,649, and 912\,673. With these values of $N, K, dim$ the sparse matrix will have 256 non-zero entries per row, with the total size of the CSR matrix data being 1.81, 14.17, 111.98, 890.27 MB. As far as the matrix-free method is concerned, the local matrix will have a dimension of 64x64 for a size of 32.77 KB per thread; the corresponding number of cells was 64, 512, 4\,096, 32\,768. We only present results for thread numbers up to 96 threads for reasons discussed in the analysis.
 
 \begin{figure}[H]
 	\centering
@@ -375,7 +375,7 @@ In the following figures, we use fixed value of $K = 3$ and $dim = 3$. The diffe
 	\begin{subfigure}{.5\linewidth}
 		\includegraphicsw{inst.pdf}
 	\end{subfigure}
-	\caption{Cache miss ratio (left) and instructions per cycle (right) for the largest matrix size~$n = 912\,673$}\label{fig:cache}
+	\caption{Cache miss ratio (left) and instructions per cycle (right) for the largest matrix size~${\dimSize = 912\,673}$}\label{fig:cache}
 \end{figure}
 
 \begin{table}[H]
@@ -384,25 +384,27 @@ In the following figures, we use fixed value of $K = 3$ and $dim = 3$. The diffe
 \end{table}
 
 \subsection{Analysis}
-In figure \ref{fig:time}, we see that performance of the CRS multiplcation does not seem to be correlated with the number of threads since we see that 48 threads preforms better that 96. With the matrix-free multiplication does seem to see continual improvement with the number of threads, the there seem to be diminishing returns on increasing the number of threads. We believe this is due to the use of the atomic command at the end of each cell operation, with more threads there is a greater wait time for each thread to write to the global resultant vector. This could be avoided if a coloring scheme was applied to allow multiple threads to write at once. It is also observed that more threads show quite poor performance for a relatively small number of dofs, there will be a very small amount of work per thread with each thread having to wait for others giving very little speedup over a serial run. In any case, we still see that the matrix-free out preforms much better than the crs implementation requiring roughly 50\% the time for large matrices, as expected.
+In Figure~\ref{fig:time}, we see that performance of the CSR multiplcation does not scale well w.r.t. the number of threads; we see that 48 threads preform better that 96. The underlying reason was explained in the end of Section~\ref{sec:CSR}.
 
-In figure \ref{fig:cache}, we see that we do indeed see an improvement in cache-misses as well as better scaling with respect to the number of threads, one of the major goals of this project. Though we were not able to compute the number of FLOPs per second directly, we use the number of instructions per cycle as a proxy, to infer that we do generally see an improvment in performance with respect to the number of threads for the matrix-free and clearly see that the CRS multiplication achieves a maximum at 48 threads. For this reason, we do not expect that our program is memory bounded and the syncronization problems discussed above seve as the major bottleneck for the matrix-free implementation. This could be verified by looking at the number of no-ops, as well as looking at how preformance increases if the atomic statement is removed (though we did not have time for these measurements).
+With the matrix-free multiplication, we do see continual improvement with the number of threads, though there seem to be diminishing returns on increasing the number of threads. We believe this is due to the use of the atomic command at the end of each cell operation, with more threads there is a greater wait time for each thread to write to the global resultant vector. This could be avoided if a coloring scheme was applied to allow multiple threads to write at once. It is also observed that more threads show quite poor performance for a relatively small number of dofs, there will be a very small amount of work per thread with each thread having to wait for others giving very little speedup over a serial run. In any case, we still see that the matrix-free out preforms much better than the CSR implementation requiring roughly 50\% the time for large matrices, as expected.
+
+In Figure~\ref{fig:cache}, we indeed see an improvement in cache-misses as well as better scaling with respect to the number of threads, one of the major goals of this project. Though we were not able to compute the number of FLOPs per second directly, we use the number of instructions per cycle as a proxy, to infer that we do generally see an improvement in performance with respect to the number of threads for the matrix-free approach. In comparison, we clearly see that the CSR multiplication achieves a maximum at 48 threads, not 96. For these reasons, we do not expect that our program is memory bounded and the syncronization problems discussed above serve as the major bottleneck for the matrix-free implementation. This could be verified by looking at the number of no-ops, as well as looking at how preformance increases if the atomic statement is removed (though we did not have time for these measurements).
 
 Though there is not a significant difference in the power draw, we see that the matrix-free generally draws more power from the CPU and less power from the DRAM; this indicates that it is in fact not using the RAM as much, and is more reliant on the CPU. 
 
-In our results we observed significant drop in preformance when using more than one node. This is clearly due to time spent waiting on network communication. In this case it would be much better to use a combination of MPI + OpenMP as discussed in \ref{sec:mfree}. 
+In our results we observed significant drop in preformance when using more than one node. This is clearly due to time spent waiting on network communication. In this case it would be much better to use a combination of MPI + OpenMP as discussed in Section~\ref{sec:mfree}. 
 
 \section{Summary}
 In summary, we have presented an implementation of the matrix-free finite element method using a shared memory parallelization scheme. We observe some improvements that allign with our expectations, while finding bottlenecks that should be avoided in the future.
 
-Some improvements that could be made would be to use a coloring scheme to avoid use of any atomic statements. If this can be avoided then much better scaling could be expected and could be scaled to much larger number of threads using a GPU. Another approach would be to incorporate an MPI scheme and scale to more nodes and distribute cells to be locally owned by each core and use a reduction operation. In \cite{setp37} they also apply SIMD vectorization in conjuction with MPI and report as much as 8 times speed up. 
+Some improvements that could be made would be to use a coloring scheme to avoid use of any atomic statements. If this can be avoided then much better scaling could be expected and could be scaled to much larger number of threads using a GPU. Another approach would be to incorporate an MPI scheme and scale to more nodes and distribute cells to be locally owned by each core and use a reduction operation. In \cite{step37} they also apply SIMD vectorization in conjuction with MPI and report as much as 8 times speed up. 
 
 \section*{Acknowledgement}
-We would both like to thank Dr. Johnsson and Suyach Bakshi for their instruction through out the semester for a great course. We both learned alot in topics that we will specifcally plan to use in our careers. 
+We would both like to thank Prof. Johnsson and Suyash Bakshi for their instruction through out the semester for a great course. We both learned a lot in topics that we specifically plan to use in our careers. 
 
 \section{Source code}\label{sec:source}
 
-The source code is available on github:~\url{https://github.com/elykwilliams/MatrixFree-FEM}
+The source code is available on github:~\url{https://github.com/elykwilliams/MatrixFree-FEM}. The contribution plot is available here:~\url{https://github.com/elykwilliams/MatrixFree-FEM/graphs/contributors}
 
 \lstinputlisting[caption={MatrixFree.h}]{../MatrixFree.h}
 
